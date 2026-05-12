@@ -74,9 +74,9 @@ LDLIBS   = --library-path . $(patsubst %,--library=:%,${LIBS})
 
 OBJECTS =
 
-SOURCES_ASM = $(shell find . -name "*.S" -printf "%P ")
-OBJECTS += $(addprefix ${DIR_BUILD}/,${SOURCES_ASM:.S=.o})
-vpath %.S $(sort $(dir ${SOURCES_ASM}))
+SOURCES_ASM = $(shell find . -name "*.s" -printf "%P ")
+OBJECTS += $(addprefix ${DIR_BUILD}/,${SOURCES_ASM:.s=.o})
+vpath %.s $(sort $(dir ${SOURCES_ASM}))
 
 SOURCES = $(shell find . -name "*.c" -printf "%P ")
 OBJECTS += $(addprefix ${DIR_BUILD}/,${SOURCES:.c=.o})
