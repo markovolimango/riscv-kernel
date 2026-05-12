@@ -1,0 +1,7 @@
+build
+.idea
+.vscode
+.DS_Store
+kernel
+kernel.asm
+CMakeLists.txt
