@@ -6,11 +6,10 @@ struct HeaderBlock {
   size_t num_blocks; // including the header
   HeaderBlock *next;
   HeaderBlock *prev;
-  HeaderBlock *next_free; // unused if block is not free
   bool is_free;
 };
 
-static HeaderBlock *free_list_head;
+static HeaderBlock *list_head;
 
 void kmem_init() {
   size_t start = ((size_t)HEAP_START_ADDR + MEM_BLOCK_SIZE - 1) /
@@ -18,12 +17,11 @@ void kmem_init() {
   size_t end =
       (size_t)HEAP_END_ADDR / MEM_BLOCK_SIZE * MEM_BLOCK_SIZE; // round down
 
-  free_list_head = (HeaderBlock *)start;
-  free_list_head->num_blocks = (end - start) / MEM_BLOCK_SIZE;
-  free_list_head->next = nullptr;
-  free_list_head->prev = nullptr;
-  free_list_head->next_free = nullptr;
-  free_list_head->is_free = true;
+  list_head = (HeaderBlock *)start;
+  list_head->num_blocks = (end - start) / MEM_BLOCK_SIZE;
+  list_head->next = nullptr;
+  list_head->prev = nullptr;
+  list_head->is_free = true;
 }
 
 void *kmem_alloc(size_t size) {
@@ -31,25 +29,18 @@ void *kmem_alloc(size_t size) {
       (size + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE; // round up to nearest block
   return kmem_alloc_blocks(num_blocks);
 }
-void put_hex(uint64 n) {
-  const char *hex = "0123456789ABCDEF";
-  for (int i = 60; i >= 0; i -= 4) {
-    __putc(hex[(n >> i) & 0xF]);
-  }
-}
 
 void *kmem_alloc_blocks(size_t num_blocks) // first-fit
 {
   size_t total_blocks = num_blocks + 1; // header included
-  HeaderBlock *curr = free_list_head, *prev = nullptr;
-  while (curr && curr->num_blocks < total_blocks)
-    prev = curr, curr = curr->next_free;
+  HeaderBlock *curr = list_head;
+  while (curr && !(curr->is_free && curr->num_blocks >= total_blocks))
+    curr = curr->next;
   if (!curr)
     return nullptr;
 
   size_t remaining_blocks = curr->num_blocks - total_blocks;
-  if (remaining_blocks > 1) // split if there's space for a new header
-  {
+  if (remaining_blocks > 1) { // split if there's space for a new header
     HeaderBlock *new_block =
         (HeaderBlock *)((size_t)curr + total_blocks * MEM_BLOCK_SIZE);
     new_block->num_blocks = remaining_blocks;
@@ -61,21 +52,11 @@ void *kmem_alloc_blocks(size_t num_blocks) // first-fit
       curr->next->prev = new_block;
     curr->next = new_block;
 
-    if (prev)
-      prev->next_free = new_block;
-    else
-      free_list_head = new_block;
-    new_block->next_free = curr->next_free;
-    curr->next_free = nullptr;
     curr->num_blocks = total_blocks;
     curr->is_free = false;
 
     return (void *)((size_t)curr + MEM_BLOCK_SIZE);
   } else {
-    if (prev)
-      prev->next_free = curr->next_free;
-    else
-      free_list_head = curr->next_free;
     curr->is_free = false;
     return (void *)((size_t)curr + MEM_BLOCK_SIZE);
   }
@@ -107,16 +88,14 @@ int kmem_free(void *ptr) {
     block = block->prev;
   }
 
-  HeaderBlock *curr = free_list_head, *prev = nullptr;
-  while (curr && curr < block)
-    prev = curr, curr = curr->next_free;
-  if (prev)
-    prev->next_free = block;
-  else
-    free_list_head = block;
-  block->next_free = curr;
-
   return EOK;
+}
+
+void put_hex(uint64 n) {
+  const char *hex = "0123456789ABCDEF";
+  for (int i = 60; i >= 0; i -= 4) {
+    __putc(hex[(n >> i) & 0xF]);
+  }
 }
 
 void kmem_dump() {
