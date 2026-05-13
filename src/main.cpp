@@ -25,13 +25,13 @@ int main() {
 
   kmem_init();
   kmem_dump();
-  kmem_alloc(1000);
+  mem_alloc(1000);
   kmem_dump();
-  void *ptr2 = kmem_alloc(200);
+  void *ptr2 = mem_alloc(200);
   kmem_dump();
-  kmem_free(ptr2);
+  mem_free(ptr2);
   kmem_dump();
-  kmem_alloc(100);
+  mem_alloc(100);
   kmem_dump();
 
   __putc('\n');
