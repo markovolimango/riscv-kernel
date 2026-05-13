@@ -5,3 +5,4 @@ build
 kernel
 kernel.asm
 CMakeLists.txt
+.clang-format

@@ -6,37 +6,45 @@
 #define SHUTDOWN_VAL 0x5555
 
 void stop_emulator() {
-  volatile unsigned int *shutdown_ptr = (volatile unsigned int *)SHUTDOWN_ADDR;
-  *shutdown_ptr = SHUTDOWN_VAL;
+    volatile unsigned int *shutdown_ptr = (volatile unsigned int *)SHUTDOWN_ADDR;
+    *shutdown_ptr = SHUTDOWN_VAL;
 }
 
 extern "C" void trap_entry();
 
+void mem_test() {
+    kmem_dump();
+
+    // Test B: Exhaustion and recovery
+    // Assuming a small test heap, allocate until it's full
+    void *p_large =
+        kmem_alloc((size_t)HEAP_END_ADDR - (size_t)HEAP_START_ADDR - 4 * MEM_BLOCK_SIZE);
+    kmem_alloc(100); // Should return NULL
+    kmem_dump();
+
+    kmem_free(p_large);
+    // Should be able to allocate again after freeing the "whale"
+    kmem_alloc(100);
+    kmem_dump();
+}
+
 int main() {
-  uint64 entry_addr = (uint64)trap_entry;
+    uint64 entry_addr = (uint64)trap_entry;
 
-  asm volatile("csrw stvec, %[entry_addr]" : : [entry_addr] "r"(entry_addr));
+    asm volatile("csrw stvec, %[entry_addr]" : : [entry_addr] "r"(entry_addr));
 
-  __putc('m');
-  __putc('a');
-  __putc('i');
-  __putc('n');
-  __putc('\n');
+    __putc('m');
+    __putc('a');
+    __putc('i');
+    __putc('n');
+    __putc('\n');
 
-  kmem_init();
-  kmem_dump();
-  mem_alloc(1000);
-  kmem_dump();
-  void *ptr2 = mem_alloc(200);
-  kmem_dump();
-  mem_free(ptr2);
-  kmem_dump();
-  mem_alloc(100);
-  kmem_dump();
+    kmem_init();
+    mem_test();
 
-  __putc('\n');
+    __putc('\n');
 
-  stop_emulator();
+    stop_emulator();
 
-  return 0;
+    return 0;
 }

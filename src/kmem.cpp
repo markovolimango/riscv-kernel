@@ -1,147 +1,191 @@
 #include "../h/kmem.hpp"
 #include "../h/errno.hpp"
 
-// block size iz at least 64B, so header always fits in one block
-struct HeaderBlock {
-  size_t num_blocks; // including the header
-  HeaderBlock *next;
-  HeaderBlock *prev;
-  bool is_free;
+struct MetaBlock {
+    size_t r_num_blocks;
+    MetaBlock *r_prev_free;
+    MetaBlock *r_next_free;
+    size_t l_num_blocks;
+    bool l_is_free;
+    bool r_is_free;
 };
 
-static HeaderBlock *list_head;
+static_assert(sizeof(MetaBlock) <= MEM_BLOCK_SIZE);
+
+static MetaBlock *start;
+static MetaBlock *end;
+
+static MetaBlock *free_list_head;
 
 void kmem_init() {
-  size_t start = ((size_t)HEAP_START_ADDR + MEM_BLOCK_SIZE - 1) /
-                 MEM_BLOCK_SIZE * MEM_BLOCK_SIZE; // round up
-  size_t end =
-      (size_t)HEAP_END_ADDR / MEM_BLOCK_SIZE * MEM_BLOCK_SIZE; // round down
+    start = (MetaBlock *)(((size_t)HEAP_START_ADDR + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE *
+                          MEM_BLOCK_SIZE);
+    end = (MetaBlock *)((size_t)HEAP_END_ADDR / MEM_BLOCK_SIZE * MEM_BLOCK_SIZE - MEM_BLOCK_SIZE);
+    free_list_head = start;
 
-  list_head = (HeaderBlock *)start;
-  list_head->num_blocks = (end - start) / MEM_BLOCK_SIZE;
-  list_head->next = nullptr;
-  list_head->prev = nullptr;
-  list_head->is_free = true;
+    start->r_num_blocks = ((size_t)end - (size_t)start - MEM_BLOCK_SIZE) / MEM_BLOCK_SIZE;
+    start->r_is_free = true;
+    start->r_prev_free = nullptr;
+    start->r_next_free = nullptr;
+
+    end->l_num_blocks = start->r_num_blocks;
+    end->l_is_free = true;
 }
 
 void *kmem_alloc(size_t size) {
-  size_t num_blocks =
-      (size + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE; // round up to nearest block
-  return kmem_alloc_blocks(num_blocks);
+    size_t num_blocks = (size + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE;
+    return kmem_alloc_blocks(num_blocks);
 }
 
-void *kmem_alloc_blocks(size_t num_blocks) // first-fit
-{
-  size_t total_blocks = num_blocks + 1; // header included
-  HeaderBlock *curr = list_head;
-  while (curr && !(curr->is_free && curr->num_blocks >= total_blocks))
-    curr = curr->next;
-  if (!curr)
-    return nullptr;
+void *kmem_alloc_blocks(size_t num_blocks) {
+    MetaBlock *curr = free_list_head;
+    while (curr && curr->r_num_blocks < num_blocks)
+        curr = curr->r_next_free;
+    if (!curr)
+        return nullptr;
+    MetaBlock *left_block = curr;
+    MetaBlock *right_block =
+        (MetaBlock *)((size_t)left_block + MEM_BLOCK_SIZE * (left_block->r_num_blocks + 1));
+    size_t remaining_blocks = curr->r_num_blocks - num_blocks;
+    if (remaining_blocks > 1) {
+        MetaBlock *new_block =
+            (MetaBlock *)((size_t)left_block + MEM_BLOCK_SIZE * (num_blocks + 1));
 
-  size_t remaining_blocks = curr->num_blocks - total_blocks;
-  if (remaining_blocks > 1) { // split if there's space for a new header
-    HeaderBlock *new_block =
-        (HeaderBlock *)((size_t)curr + total_blocks * MEM_BLOCK_SIZE);
-    new_block->num_blocks = remaining_blocks;
-    new_block->is_free = true;
+        new_block->l_num_blocks = num_blocks;
+        new_block->l_is_free = false;
+        new_block->r_num_blocks = remaining_blocks - 1;
+        new_block->r_is_free = true;
+        new_block->r_next_free = left_block->r_next_free;
+        new_block->r_prev_free = left_block->r_prev_free;
+        if (left_block->r_prev_free)
+            left_block->r_prev_free->r_next_free = new_block;
+        else
+            free_list_head = new_block;
+        if (left_block->r_next_free)
+            left_block->r_next_free->r_prev_free = new_block;
 
-    new_block->next = curr->next;
-    new_block->prev = curr;
-    if (curr->next)
-      curr->next->prev = new_block;
-    curr->next = new_block;
+        left_block->r_num_blocks = num_blocks;
+        left_block->r_is_free = false;
+        left_block->r_next_free = nullptr;
 
-    curr->num_blocks = total_blocks;
-    curr->is_free = false;
+        right_block->l_num_blocks = new_block->r_num_blocks;
+        right_block->l_is_free = true;
 
-    return (void *)((size_t)curr + MEM_BLOCK_SIZE);
-  } else {
-    curr->is_free = false;
-    return (void *)((size_t)curr + MEM_BLOCK_SIZE);
-  }
+        return (void *)((size_t)left_block + MEM_BLOCK_SIZE);
+    } else {
+        if (left_block->r_prev_free)
+            left_block->r_prev_free->r_next_free = left_block->r_next_free;
+        else
+            free_list_head = left_block->r_next_free;
+        if (left_block->r_next_free)
+            left_block->r_next_free->r_prev_free = left_block->r_prev_free;
+
+        left_block->r_is_free = false;
+        left_block->r_next_free = nullptr;
+        left_block->r_prev_free = nullptr;
+
+        right_block->l_is_free = false;
+
+        return (void *)((size_t)left_block + MEM_BLOCK_SIZE);
+    }
 }
 
 int kmem_free(void *ptr) {
-  if (!ptr || (size_t)ptr < (size_t)HEAP_START_ADDR + MEM_BLOCK_SIZE ||
-      (size_t)ptr >= (size_t)HEAP_END_ADDR)
-    return EINVAL;
+    if (!ptr || (size_t)ptr < (size_t)HEAP_START_ADDR || (size_t)ptr >= (size_t)HEAP_END_ADDR)
+        return -EINVAL;
+    MetaBlock *left_block = (MetaBlock *)((size_t)ptr - MEM_BLOCK_SIZE);
+    if (left_block->r_is_free)
+        return -EINVAL;
+    MetaBlock *right_block =
+        (MetaBlock *)((size_t)left_block + MEM_BLOCK_SIZE * (left_block->r_num_blocks + 1));
+    left_block->r_is_free = true;
+    right_block->l_is_free = true;
 
-  HeaderBlock *block = (HeaderBlock *)((size_t)ptr - MEM_BLOCK_SIZE);
-  if (block->is_free)
-    return EINVAL; // double free
+    bool merged = false;
+    if (right_block != end && right_block->r_is_free) {
+        merged = true;
+        MetaBlock *next_block =
+            (MetaBlock *)((size_t)right_block + MEM_BLOCK_SIZE * (right_block->r_num_blocks + 1));
 
-  block->is_free = true;
+        left_block->r_num_blocks += right_block->r_num_blocks + 1;
+        left_block->r_next_free = right_block->r_next_free;
+        left_block->r_prev_free = right_block->r_prev_free;
 
-  if (block->next && block->next->is_free) {
-    block->num_blocks += block->next->num_blocks;
-    block->next = block->next->next;
-    if (block->next)
-      block->next->prev = block;
-  }
+        next_block->l_num_blocks = left_block->r_num_blocks;
 
-  if (block->prev && block->prev->is_free) {
-    block->prev->num_blocks += block->num_blocks;
-    block->prev->next = block->next;
-    if (block->next)
-      block->next->prev = block->prev;
-    block = block->prev;
-  }
+        if (right_block->r_next_free)
+            right_block->r_next_free->r_prev_free = left_block;
+        if (right_block->r_prev_free)
+            right_block->r_prev_free->r_next_free = left_block;
+        else
+            free_list_head = left_block;
+    }
+    if (left_block != start && left_block->l_is_free) {
+        merged = true;
+        MetaBlock *prev_block =
+            (MetaBlock *)((size_t)left_block - MEM_BLOCK_SIZE * (left_block->l_num_blocks + 1));
 
-  return EOK;
+        prev_block->r_num_blocks += left_block->r_num_blocks + 1;
+        right_block->l_num_blocks = prev_block->r_num_blocks;
+
+        prev_block->r_next_free = left_block->r_next_free;
+        prev_block->r_prev_free = left_block->r_prev_free;
+        if (left_block->r_next_free)
+            left_block->r_next_free->r_prev_free = prev_block;
+        if (left_block->r_prev_free)
+            left_block->r_prev_free->r_next_free = prev_block;
+        else
+            free_list_head = prev_block;
+    }
+    if (!merged) {
+        left_block->r_prev_free = nullptr;
+        left_block->r_next_free = free_list_head;
+        if (free_list_head)
+            free_list_head->r_prev_free = left_block;
+        free_list_head = left_block;
+    }
+
+    return EOK;
 }
 
 void put_hex(uint64 n) {
-  const char *hex = "0123456789ABCDEF";
-  for (int i = 60; i >= 0; i -= 4) {
-    __putc(hex[(n >> i) & 0xF]);
-  }
+    const char *hex = "0123456789ABCDEF";
+    for (int i = 60; i >= 0; i -= 4) {
+        __putc(hex[(n >> i) & 0xF]);
+    }
 }
 
 void kmem_dump() {
-  __putc('\n');
-  put_hex(MEM_BLOCK_SIZE);
-  __putc('\n');
-
-  size_t start = ((size_t)HEAP_START_ADDR + MEM_BLOCK_SIZE - 1) /
-                 MEM_BLOCK_SIZE * MEM_BLOCK_SIZE; // round up
-  size_t end =
-      (size_t)HEAP_END_ADDR / MEM_BLOCK_SIZE * MEM_BLOCK_SIZE; // round down
-
-  HeaderBlock *curr = (HeaderBlock *)start;
-
-  __putc('\n');
-  __putc('-');
-  __putc('-');
-  __putc('H'); // --HEAP MAP--
-  __putc('\n');
-
-  while (curr != nullptr) {
-    // Print Address
-    __putc('@');
-    put_hex((uint64)curr);
-
-    __putc(' ');
-
-    // Print Status (F for Free, U for Used)
-    if (curr->is_free)
-      __putc('F');
-    else
-      __putc('U');
-
-    __putc(':');
-
-    // Print number of blocks
-    put_hex((uint64)curr->num_blocks);
-
+    __putc('\n');
+    __putc('-');
+    __putc('-');
+    __putc('H'); // --HEAP MAP--
     __putc('\n');
 
-    // Move to the next PHYSICAL block
-    // Assuming your 'Total Span' design (header + payload)
-    curr = curr->next;
+    MetaBlock *curr = start;
 
-    // Safety: don't walk past the end of the heap
-    if (curr >= (HeaderBlock *)end)
-      break;
-  }
+    while (curr != end) {
+        // Print Address
+        __putc('@');
+        put_hex((uint64)curr);
+
+        __putc(' ');
+
+        // Print Status (F for Free, U for Used)
+        if (curr->r_is_free)
+            __putc('F');
+        else
+            __putc('U');
+
+        __putc(':');
+
+        // Print number of blocks
+        put_hex((uint64)curr->r_num_blocks);
+
+        __putc('\n');
+
+        // Move to the next PHYSICAL block
+        // Assuming your 'Total Span' design (header + payload)
+        curr = (MetaBlock *)((size_t)curr + MEM_BLOCK_SIZE * (curr->r_num_blocks + 1));
+    }
 }

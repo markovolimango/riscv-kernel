@@ -8,7 +8,7 @@ extern "C" void trap_handler(uint64 code, uint64 arg1, uint64 arg2, uint64 arg3,
   volatile uint64 ret = -ENOSYS;
   switch (code) {
   case 0x00: // mem_alloc
-    ret = (uint64)kmem_alloc((size_t)arg1);
+    ret = (uint64)kmem_alloc_blocks((size_t)arg1);
     break;
   case 0x01: // mem_free
     ret = (uint64)kmem_free((void *)arg1);
