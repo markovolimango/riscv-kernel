@@ -10,7 +10,11 @@ struct MetaBlock {
     bool r_is_free;
 };
 
-static_assert(sizeof(MetaBlock) <= MEM_BLOCK_SIZE);
+inline MetaBlock *as_mb(uint64 addr) { return reinterpret_cast<MetaBlock *>(addr); }
+inline uint64 as_addr(MetaBlock *mb) { return reinterpret_cast<uint64>(mb); }
+inline MetaBlock *at_offs(MetaBlock *mb, size_t num_blocks) {
+    return reinterpret_cast<MetaBlock *>(as_addr(mb) + MEM_BLOCK_SIZE * num_blocks);
+}
 
 static MetaBlock *start;
 static MetaBlock *end;
@@ -18,12 +22,12 @@ static MetaBlock *end;
 static MetaBlock *free_list_head;
 
 void kmem_init() {
-    start = (MetaBlock *)(((size_t)HEAP_START_ADDR + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE *
-                          MEM_BLOCK_SIZE);
-    end = (MetaBlock *)((size_t)HEAP_END_ADDR / MEM_BLOCK_SIZE * MEM_BLOCK_SIZE - MEM_BLOCK_SIZE);
+    start =
+        as_mb((((uint64)HEAP_START_ADDR + MEM_BLOCK_SIZE - 1) / MEM_BLOCK_SIZE) * MEM_BLOCK_SIZE);
+    end = as_mb(((uint64)HEAP_END_ADDR / MEM_BLOCK_SIZE) * MEM_BLOCK_SIZE - MEM_BLOCK_SIZE);
     free_list_head = start;
 
-    start->r_num_blocks = ((size_t)end - (size_t)start - MEM_BLOCK_SIZE) / MEM_BLOCK_SIZE;
+    start->r_num_blocks = (as_addr(end) - as_addr(start) - MEM_BLOCK_SIZE) / MEM_BLOCK_SIZE;
     start->r_is_free = true;
     start->r_prev_free = nullptr;
     start->r_next_free = nullptr;
@@ -44,12 +48,10 @@ void *kmem_alloc_blocks(size_t num_blocks) {
     if (!curr)
         return nullptr;
     MetaBlock *left_block = curr;
-    MetaBlock *right_block =
-        (MetaBlock *)((size_t)left_block + MEM_BLOCK_SIZE * (left_block->r_num_blocks + 1));
+    MetaBlock *right_block = at_offs(left_block, left_block->r_num_blocks + 1);
     size_t remaining_blocks = curr->r_num_blocks - num_blocks;
     if (remaining_blocks > 1) {
-        MetaBlock *new_block =
-            (MetaBlock *)((size_t)left_block + MEM_BLOCK_SIZE * (num_blocks + 1));
+        MetaBlock *new_block = at_offs(left_block, num_blocks + 1);
 
         new_block->l_num_blocks = num_blocks;
         new_block->l_is_free = false;
@@ -71,7 +73,7 @@ void *kmem_alloc_blocks(size_t num_blocks) {
         right_block->l_num_blocks = new_block->r_num_blocks;
         right_block->l_is_free = true;
 
-        return (void *)((size_t)left_block + MEM_BLOCK_SIZE);
+        return (void *)(as_addr(left_block) + MEM_BLOCK_SIZE);
     } else {
         if (left_block->r_prev_free)
             left_block->r_prev_free->r_next_free = left_block->r_next_free;
@@ -86,26 +88,24 @@ void *kmem_alloc_blocks(size_t num_blocks) {
 
         right_block->l_is_free = false;
 
-        return (void *)((size_t)left_block + MEM_BLOCK_SIZE);
+        return (void *)(as_addr(left_block) + MEM_BLOCK_SIZE);
     }
 }
 
 int kmem_free(void *ptr) {
-    if (!ptr || (size_t)ptr < (size_t)HEAP_START_ADDR || (size_t)ptr >= (size_t)HEAP_END_ADDR)
+    if (!ptr || (uint64)ptr < (uint64)HEAP_START_ADDR || (uint64)ptr >= (uint64)HEAP_END_ADDR)
         return -EINVAL;
-    MetaBlock *left_block = (MetaBlock *)((size_t)ptr - MEM_BLOCK_SIZE);
+    MetaBlock *left_block = at_offs(as_mb((uint64)ptr), -1);
     if (left_block->r_is_free)
         return -EINVAL;
-    MetaBlock *right_block =
-        (MetaBlock *)((size_t)left_block + MEM_BLOCK_SIZE * (left_block->r_num_blocks + 1));
+    MetaBlock *right_block = at_offs(left_block, left_block->r_num_blocks + 1);
     left_block->r_is_free = true;
     right_block->l_is_free = true;
 
     bool merged = false;
     if (right_block != end && right_block->r_is_free) {
         merged = true;
-        MetaBlock *next_block =
-            (MetaBlock *)((size_t)right_block + MEM_BLOCK_SIZE * (right_block->r_num_blocks + 1));
+        MetaBlock *next_block = at_offs(right_block, right_block->r_num_blocks + 1);
 
         left_block->r_num_blocks += right_block->r_num_blocks + 1;
         left_block->r_next_free = right_block->r_next_free;
@@ -122,8 +122,7 @@ int kmem_free(void *ptr) {
     }
     if (left_block != start && left_block->l_is_free) {
         merged = true;
-        MetaBlock *prev_block =
-            (MetaBlock *)((size_t)left_block - MEM_BLOCK_SIZE * (left_block->l_num_blocks + 1));
+        MetaBlock *prev_block = at_offs(left_block, -left_block->l_num_blocks - 1);
 
         prev_block->r_num_blocks += left_block->r_num_blocks + 1;
         right_block->l_num_blocks = prev_block->r_num_blocks;
@@ -186,6 +185,7 @@ void kmem_dump() {
 
         // Move to the next PHYSICAL block
         // Assuming your 'Total Span' design (header + payload)
-        curr = (MetaBlock *)((size_t)curr + MEM_BLOCK_SIZE * (curr->r_num_blocks + 1));
+        curr =
+            reinterpret_cast<MetaBlock *>((size_t)curr + MEM_BLOCK_SIZE * (curr->r_num_blocks + 1));
     }
 }
