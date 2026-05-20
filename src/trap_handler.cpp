@@ -1,16 +1,11 @@
 #include "../h/SyscallCode.hpp"
+#include "../h/TrapFrame.hpp"
+#include "../h/_thread.hpp"
 #include "../h/csr.hpp"
 #include "../h/errno.hpp"
 #include "../h/kmem.hpp"
 #include "../lib/console.h"
 #include "../lib/hw.h"
-
-struct TrapFrame {
-    uint64 x[32];
-    uint64 sepc;
-    uint64 sstatus;
-    uint64 scause;
-};
 
 static void handle_syscall(volatile TrapFrame *tf) {
     volatile uint64 ret = -ENOSYS;
@@ -20,6 +15,20 @@ static void handle_syscall(volatile TrapFrame *tf) {
         break;
     case SyscallCode::MEM_FREE:
         ret = (uint64)kmem_free((void *)tf->x[11]);
+        break;
+    case SyscallCode::THREAD_CREATE: {
+        thread_t *handle = (thread_t *)tf->x[11];
+        *handle = _thread::createThread((void (*)(void *))tf->x[12], (void *)tf->x[13],
+                                        (void *)tf->x[14]);
+        ret = (*handle) ? 0 : -ENOMEM;
+        break;
+    }
+    case SyscallCode::THREAD_EXIT:
+        ret = _thread::exit();
+        break;
+    case SyscallCode::THREAD_DISPATCH:
+        _thread::dispatch();
+        ret = 0;
         break;
     default:
         ret = -ENOSYS;

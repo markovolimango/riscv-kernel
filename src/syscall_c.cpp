@@ -1,5 +1,6 @@
-#include "../h/syscall_c.h"
+#include "../h/syscall_c.hpp"
 #include "../h/SyscallCode.hpp"
+#include "../h/errno.hpp"
 #include "../h/kmem.hpp"
 
 static uint64 syscall(SyscallCode code, uint64 arg1 = 0, uint64 arg2 = 0, uint64 arg3 = 0,
@@ -21,4 +22,16 @@ void *mem_alloc(size_t size) {
 }
 
 int mem_free(void *ptr) { return (int)syscall(SyscallCode::MEM_FREE, (uint64)ptr); }
+
+int thread_create(thread_t *handle, void (*start_routine)(void *), void *arg) {
+    void *user_stack = kmem_alloc(DEFAULT_STACK_SIZE);
+    if (!user_stack)
+        return -ENOMEM;
+    return (int)syscall(SyscallCode::THREAD_CREATE, (uint64)handle, (uint64)start_routine,
+                        (uint64)arg, (uint64)user_stack);
+}
+
+int thread_exit() { return (int)syscall(SyscallCode::THREAD_EXIT); }
+
+void thread_dispatch() { syscall(SyscallCode::THREAD_DISPATCH); }
 }
