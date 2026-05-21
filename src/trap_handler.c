@@ -15,6 +15,13 @@ static void handle_syscall(volatile trap_frame *tf) {
     case SYSCALL_MEM_FREE:
         ret = (uint64)kmem_free((void *)tf->x[11]);
         break;
+    case SYSCALL_GETC:
+        ret = (uint64)__getc();
+        break;
+    case SYSCALL_PUTC:
+        ret = EOK;
+        __putc(tf->x[11]);
+        break;
     default:
         ret = -ENOSYS;
         break;

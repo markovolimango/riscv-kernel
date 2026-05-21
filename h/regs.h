@@ -18,18 +18,22 @@
 extern "C" {
 #endif
 
-// ============ SP - Stack Pointer ============
+// SP - Stack Pointer
 static inline uint64 sp_read() {
     uint64 val;
     asm volatile("mv %0, sp" : "=r"(val));
     return val;
 }
 
-// ============ SCAUSE - Supervisor Cause ============
+// SCAUSE - Supervisor Cause
 static inline uint64 scause_code(uint64 scause_val) { return scause_val & ~SCAUSE_INTERRUPT_BIT; }
 static inline uint8 scause_is_interrupt(uint64 scause_val) {
     return (scause_val & SCAUSE_INTERRUPT_BIT) != 0;
 }
+
+// STVEC - Supervisor Trap Vector
+static inline void stvec_write(uint64 val) { asm volatile("csrw stvec, %0" : : "r"(val)); }
+
 #ifdef __cplusplus
 }
 #endif
