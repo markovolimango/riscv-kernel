@@ -34,7 +34,7 @@ static void handle_syscall(volatile trap_frame *tf) {
 
     tf->x[10] = ret;
 
-    tf->sepc += 4; // advance past ecall
+    sepc_inc(); // advance past ecall instruction
 }
 
 static void handle_timer() {
@@ -77,7 +77,7 @@ static void handle_external_irq() {
 }
 
 void trap_handler(volatile trap_frame *tf) {
-    uint64 scause = tf->scause;
+    uint64 scause = scause_read();
     if (scause_is_interrupt(scause)) {
         uint64 code = scause_code(scause);
         switch (code) {
@@ -98,7 +98,7 @@ void trap_handler(volatile trap_frame *tf) {
             break;
         case SCAUSE_ILLEGAL_INSTR:
             // currently just skips, should kill thread
-            tf->sepc += 4;
+            sepc_inc();
             break;
         case SCAUSE_LOAD_FAULT:
         case SCAUSE_STORE_FAULT:
@@ -106,7 +106,7 @@ void trap_handler(volatile trap_frame *tf) {
             break;
         default:
             // wtf
-            tf->sepc += 4;
+            sepc_inc();
             break;
         }
     }

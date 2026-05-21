@@ -16,7 +16,7 @@ typedef struct tcb {
 extern "C" {
 #endif
 
-int kthread_create(void (*body)(void *), void *arg, void *usr_stack);
+tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack);
 int kthread_exit();
 void kthread_dispatch();
 

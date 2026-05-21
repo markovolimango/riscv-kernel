@@ -26,6 +26,11 @@ static inline uint64 sp_read() {
 }
 
 // SCAUSE - Supervisor Cause
+static inline uint64 scause_read() {
+    uint64 val;
+    asm volatile("csrr %0, scause" : "=r"(val));
+    return val;
+}
 static inline uint64 scause_code(uint64 scause_val) { return scause_val & ~SCAUSE_INTERRUPT_BIT; }
 static inline uint8 scause_is_interrupt(uint64 scause_val) {
     return (scause_val & SCAUSE_INTERRUPT_BIT) != 0;
@@ -33,6 +38,13 @@ static inline uint8 scause_is_interrupt(uint64 scause_val) {
 
 // STVEC - Supervisor Trap Vector
 static inline void stvec_write(uint64 val) { asm volatile("csrw stvec, %0" : : "r"(val)); }
+
+// SEPC - Supervisor Exception Program Counter
+static inline void sepc_inc() {
+    asm volatile("csrr t0, sepc\n"
+                 "addi t0, t0, 4\n"
+                 "csrw sepc, t0\n");
+}
 
 #ifdef __cplusplus
 }
