@@ -1,0 +1,7 @@
+#ifndef SYSCALL_CODES_H
+#define SYSCALL_CODES_H
+
+#define SYSCALL_MEM_ALLOC 0x00
+#define SYSCALL_MEM_FREE 0x01
+
+#endif // SYSCALL_CODES_H

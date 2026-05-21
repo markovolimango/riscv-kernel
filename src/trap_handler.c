@@ -1,40 +1,27 @@
-#include "../h/SyscallCode.hpp"
-#include "../h/TrapFrame.hpp"
-#include "../h/_thread.hpp"
-#include "../h/csr.hpp"
-#include "../h/errno.hpp"
-#include "../h/kmem.hpp"
+#include "../h/errno.h"
+#include "../h/kmem.h"
+#include "../h/regs.h"
+#include "../h/syscall_codes.h"
+#include "../h/trap_frame.h"
 #include "../lib/console.h"
 #include "../lib/hw.h"
 
-static void handle_syscall(volatile TrapFrame *tf) {
+static void handle_syscall(volatile trap_frame *tf) {
     volatile uint64 ret = -ENOSYS;
-    switch (static_cast<SyscallCode>(tf->x[10])) {
-    case SyscallCode::MEM_ALLOC:
+    switch (tf->x[10]) {
+    case SYSCALL_MEM_ALLOC:
         ret = (uint64)kmem_alloc_blocks((size_t)tf->x[11]);
         break;
-    case SyscallCode::MEM_FREE:
+    case SYSCALL_MEM_FREE:
         ret = (uint64)kmem_free((void *)tf->x[11]);
-        break;
-    case SyscallCode::THREAD_CREATE: {
-        thread_t *handle = (thread_t *)tf->x[11];
-        *handle = _thread::createThread((void (*)(void *))tf->x[12], (void *)tf->x[13],
-                                        (void *)tf->x[14]);
-        ret = (*handle) ? 0 : -ENOMEM;
-        break;
-    }
-    case SyscallCode::THREAD_EXIT:
-        ret = _thread::exit();
-        break;
-    case SyscallCode::THREAD_DISPATCH:
-        _thread::dispatch();
-        ret = 0;
         break;
     default:
         ret = -ENOSYS;
         break;
     }
+
     tf->x[10] = ret;
+
     tf->sepc += 4; // advance past ecall
 }
 
@@ -77,15 +64,15 @@ static void handle_external_irq() {
     */
 }
 
-extern "C" void trap_handler(volatile TrapFrame *tf) {
+void trap_handler(volatile trap_frame *tf) {
     uint64 scause = tf->scause;
-    if (csr::scause::is_interrupt(scause)) {
-        uint64 code = csr::scause::code(scause);
+    if (scause_is_interrupt(scause)) {
+        uint64 code = scause_code(scause);
         switch (code) {
-        case csr::scause::TIMER_SOFTWARE:
+        case SCAUSE_TIMER_SOFTWARE:
             handle_timer();
             break;
-        case csr::scause::EXT_IRQ:
+        case SCAUSE_EXT_IRQ:
             handle_external_irq();
             break;
         default:
@@ -93,16 +80,16 @@ extern "C" void trap_handler(volatile TrapFrame *tf) {
         }
     } else {
         switch (scause) {
-        case csr::scause::ECALL_U:
-        case csr::scause::ECALL_S:
+        case SCAUSE_ECALL_U:
+        case SCAUSE_ECALL_S:
             handle_syscall(tf); // advances sepc by 4 internally
             break;
-        case csr::scause::ILLEGAL_INSTR:
+        case SCAUSE_ILLEGAL_INSTR:
             // currently just skips, should kill thread
             tf->sepc += 4;
             break;
-        case csr::scause::LOAD_FAULT:
-        case csr::scause::STORE_FAULT:
+        case SCAUSE_LOAD_FAULT:
+        case SCAUSE_STORE_FAULT:
             // should kill thread
             break;
         default:

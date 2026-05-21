@@ -1,5 +1,5 @@
-#ifndef ERRNO_HPP
-#define ERRNO_HPP
+#ifndef ERRNO_H
+#define ERRNO_H
 
 // same as POSIX errno values
 #define EOK 0         // Success
@@ -12,4 +12,4 @@
 #define ESRCH 3       // No such process/thread (thread already exited)
 #define ETIME 62      // Timer expired (optional, sleep edge cases)
 
-#endif // ERRNO_HPP
+#endif // ERRNO_H

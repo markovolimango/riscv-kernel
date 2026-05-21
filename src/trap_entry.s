@@ -12,10 +12,6 @@
 .macro PUSH_REGS
     csrw sscratch, sp           # save original sp before touching it
 
-    la sp, _ZN7_thread7runningE              # load address of _thread::running
-    ld sp, 0(sp)                         # sp = _thread::running (TCB pointer)
-    ld sp, 0(sp)                         # sp = running->kernel_sp (first field of TCB)
-
     addi sp, sp, -280           # allocate frame (35 * 8)
     .irp index, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
     sd x\index, \index*8(sp)

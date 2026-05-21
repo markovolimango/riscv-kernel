@@ -1,5 +1,5 @@
 #include "../h/_thread.hpp"
-#include "../h/kmem.hpp"
+#include "../h/kmem.h"
 #include "../h/syscall_c.hpp"
 #include "../lib/console.h"
 
@@ -32,12 +32,14 @@ void tb1(void *arg) {
     __putc('T');
     __putc('1');
     __putc('\n');
+    thread_dispatch();
 }
 
 void tb2(void *arg) {
     __putc('T');
     __putc('2');
     __putc('\n');
+    thread_dispatch();
 }
 
 int main() {

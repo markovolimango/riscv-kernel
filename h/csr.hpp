@@ -4,7 +4,9 @@
 #include "../lib/hw.h"
 
 namespace csr {
+// ====== SCAUSE - Supervisor Cause ======
 namespace scause {
+
 static constexpr uint64 INTERRUPT_BIT = (1ULL << 63);
 
 static constexpr uint64 TIMER_SOFTWARE = 1ULL;
@@ -23,7 +25,9 @@ static constexpr uint64 ECALL_S = 9ULL;
 }
 } // namespace scause
 
+// ====== SEPC - Supervisor Exception Program Counter ======
 namespace sepc {
+
 [[nodiscard]] inline uint64 read() {
     uint64 val;
     asm volatile("csrr %0, sepc" : "=r"(val));
@@ -33,7 +37,9 @@ namespace sepc {
 inline void write(uint64 val) { asm volatile("csrw sepc, %0" ::"r"(val)); }
 } // namespace sepc
 
+// ====== SSTATUS - Supervisor Status ======
 namespace sstatus {
+
 static constexpr uint64 SIE = (1ULL << 1);  // S-mode interrupt enable
 static constexpr uint64 SPIE = (1ULL << 5); // saved SIE (before trap)
 static constexpr uint64 SPP = (1ULL << 8);  // previous privilege mode (0=U, 1=S)
@@ -52,6 +58,7 @@ inline void clear_bits(uint64 mask) { asm volatile("csrc sstatus, %0" ::"r"(mask
 } // namespace sstatus
 
 namespace sip {
+
 static constexpr uint64 SSIP = (1ULL << 1); // S-mode software interrupt pending
 static constexpr uint64 SEIP = (1ULL << 9); // S-mode external interrupt pending
 
@@ -68,7 +75,9 @@ inline void set_bits(uint64 mask) { asm volatile("csrs sip, %0" ::"r"(mask)); }
 inline void clear_bits(uint64 mask) { asm volatile("csrc sip, %0" ::"r"(mask)); }
 } // namespace sip
 
+// ====== SIE - Supervisor Interrupt Enable ======
 namespace sie {
+
 static constexpr uint64 SSIE = (1ULL << 1); // S-mode software interrupt enable
 static constexpr uint64 SEIE = (1ULL << 9); // S-mode external interrupt enable
 
@@ -84,6 +93,18 @@ inline void set_bits(uint64 mask) { asm volatile("csrs sie, %0" ::"r"(mask)); }
 
 inline void clear_bits(uint64 mask) { asm volatile("csrc sie, %0" ::"r"(mask)); }
 } // namespace sie
+
+// ====== SSCRATCH - Supervisor Scratch ======
+namespace sscratch {
+
+[[nodiscard]] inline uint64 read() {
+    uint64 val;
+    asm volatile("csrr %0, sscratch" : "=r"(val));
+    return val;
+}
+
+inline void write(uint64 val) { asm volatile("csrw sscratch, %0" ::"r"(val)); }
+} // namespace sscratch
 
 } // namespace csr
 

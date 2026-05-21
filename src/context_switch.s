@@ -1,11 +1,10 @@
+.align 4
 .section .text
 .global context_switch
-
-# always called from trap_handler, so all registers are already saved on the stack
-# so we just need to save kernel_sp
-
-# void context_switch(thread_t old, thread_t new)
+# void context_switch(_thread::context *old, _thread::context *new)
 context_switch:
-    sd sp, 0(a0) # kernel_sp must be first field in the _thread class
-    ld sp, 0(a1)
+    sd sp, 0(a0) # old->ksp = sp
+    sd ra, 8(a0) # old->ra = ra
+    ld sp, 0(a1) # sp = new->ksp
+    ld ra, 8(a1) # ra = new->ra
     ret
