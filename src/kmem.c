@@ -185,6 +185,6 @@ void kmem_dump() {
 
         // Move to the next PHYSICAL block
         // Assuming your 'Total Span' design (header + payload)
-        curr = (MetaBlock *)((size_t)curr + MEM_BLOCK_SIZE * (curr->r_num_blocks + 1))
+        curr = (MetaBlock *)((size_t)curr + MEM_BLOCK_SIZE * (curr->r_num_blocks + 1));
     }
 }
