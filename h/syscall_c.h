@@ -11,11 +11,11 @@ extern "C" {
 void *mem_alloc(size_t size);
 int mem_free(void *);
 
-struct _thread;
+struct tcb;
 #ifdef __cplusplus
-typedef _thread *thread_t;
+typedef tcb *thread_t;
 #else
-typedef struct _thread *thread_t;
+typedef struct tcb *thread_t;
 #endif
 int thread_create(thread_t *handle, void (*start_routine)(void *), void *arg);
 int thread_exit();

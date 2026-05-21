@@ -20,5 +20,9 @@ void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
 
+    mem_alloc(1); // test kmem
+
+    kmem_dump();
+
     shutdown();
 }

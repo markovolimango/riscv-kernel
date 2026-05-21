@@ -1,5 +1,6 @@
 #include "../h/errno.h"
 #include "../h/kmem.h"
+#include "../h/kthread.h"
 #include "../h/regs.h"
 #include "../h/syscall_codes.h"
 #include "../h/trap_frame.h"
@@ -7,19 +8,23 @@
 #include "../lib/hw.h"
 
 static void handle_syscall(volatile trap_frame *tf) {
-    volatile uint64 ret = -ENOSYS;
+    volatile uint64 ret = EOK;
     switch (tf->x[10]) {
-    case SYSCALL_MEM_ALLOC:
+    case SYSCALL_MEM_ALLOC: // mem_alloc(size_t size)
         ret = (uint64)kmem_alloc_blocks((size_t)tf->x[11]);
         break;
-    case SYSCALL_MEM_FREE:
+    case SYSCALL_MEM_FREE: // mem_free(void *ptr)
         ret = (uint64)kmem_free((void *)tf->x[11]);
         break;
-    case SYSCALL_GETC:
-        ret = (uint64)__getc();
+    case SYSCALL_THREAD_CREATE: // (tcb **handle, void (*start_routine)(void *), void *arg,
+                                // void* stack_space)
+        *((tcb **)tf->x[11]) =
+            kthread_create((void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14]);
+        if (!*((tcb **)tf->x[11]))
+            ret = -ENOMEM;
         break;
+
     case SYSCALL_PUTC:
-        ret = EOK;
         __putc(tf->x[11]);
         break;
     default:
