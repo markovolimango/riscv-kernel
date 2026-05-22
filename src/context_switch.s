@@ -10,7 +10,7 @@
 # void context_switch(tcb_context *old, tcb_context *new)
 context_switch:
     # firsg save all callee-saved registers, because they all might change
-    addi sp, sp, -8*13
+    addi sp, sp, -8*14
     .irp index, 0,1,2,3,4,5,6,7,8,9,10,11
     sd s\index, \index*8(sp)
     .endr
@@ -27,6 +27,6 @@ context_switch:
     ld s\index, \index*8(sp)
     .endr
     ld tp, 8*12(sp)
-    addi sp, sp, 8*13
+    addi sp, sp, 8*14
     ret
 

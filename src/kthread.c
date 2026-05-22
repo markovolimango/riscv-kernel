@@ -29,6 +29,15 @@ void kthread_init() {
         return 0;                                                                                  \
     } while (0)
 
+void wrapper() {
+    __putc('W');
+    running_thread->body(running_thread->arg);
+    kthread_exit();
+    __putc('E');
+    while (1)
+        ;
+}
+
 tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
     tcb *t = kmem_alloc(sizeof(tcb));
     if (!t)
@@ -36,16 +45,28 @@ tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
 
     t->usr_stack = usr_stack;
     t->context.sp = (uint64)usr_stack + DEFAULT_STACK_SIZE -
-                    8 * 13; // because it tries to pop registers when restoring context
-    t->context.ra = (uint64)body;
+                    8 * 14; // because it tries to pop registers when restoring context
+    t->context.ra = (uint64)wrapper;
+
+    uint64 *stack = (uint64 *)t->context.sp;
+    for (int i = 0; i < 13; i++)
+        stack[i] = 0;
+
+    t->body = body;
+    t->arg = arg;
 
     scheduler_put(t);
     return t;
 }
 
 int kthread_exit() {
-    // later alligator
-    return 0;
+    tcb *prev = running_thread;
+    tcb *next = scheduler_get();
+    if (next) {
+        running_thread = next;
+        context_switch(&prev->context, &next->context);
+    }
+    return -ESRCH;
 }
 
 void kthread_dispatch() {

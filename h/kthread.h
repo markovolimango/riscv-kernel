@@ -10,7 +10,12 @@ typedef struct tcb_context {
 
 typedef struct tcb {
     tcb_context context;
+
     void *usr_stack;
+
+    void (*body)(void *);
+    void *arg;
+
     struct tcb *next;
     // more fields to come of course
 } tcb;

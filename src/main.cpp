@@ -1,9 +1,7 @@
-extern "C" {
 #include "../h/kmem.h"
 #include "../h/kthread.h"
 #include "../h/regs.h"
 #include "../h/syscall_c.h"
-}
 
 #define SHUTDOWN_ADDR 0x100000
 #define SHUTDOWN_VAL 0x5555
@@ -17,7 +15,7 @@ extern "C" void trap_entry();
 
 void b1(void *arg) {
     __putc('1');
-    kthread_dispatch();
+    // kthread_exit();
 }
 
 void main() {
@@ -31,8 +29,10 @@ void main() {
         __putc('m');
         kthread_dispatch();
     }
+    int ret = kthread_exit();
+    __putc('0' - ret);
 
-    kmem_dump();
+    __putc('\n');
 
     shutdown();
 }
