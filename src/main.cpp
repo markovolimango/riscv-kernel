@@ -1,5 +1,6 @@
 extern "C" {
 #include "../h/kmem.h"
+#include "../h/kthread.h"
 #include "../h/regs.h"
 #include "../h/syscall_c.h"
 }
@@ -14,13 +15,22 @@ void shutdown() {
 
 extern "C" void trap_entry();
 
-extern void userMain();
+void b1(void *arg) {
+    __putc('1');
+    kthread_dispatch();
+}
 
 void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
+    kthread_init();
 
-    mem_alloc(1); // test kmem
+    kthread_create(b1, 0, kmem_alloc(DEFAULT_STACK_SIZE));
+
+    for (int i = 0; i < 10; i++) {
+        __putc('m');
+        kthread_dispatch();
+    }
 
     kmem_dump();
 

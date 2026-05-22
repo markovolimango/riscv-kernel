@@ -1,8 +1,46 @@
 #include "../h/kthread.h"
+#include "../h/errno.h"
+#include "../h/kmem.h"
+#include "../h/regs.h"
+#include "../h/scheduler.h"
+
+#ifdef __cplusplus
+extern "C" void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);
+#else
+extern void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);
+#endif
+
+tcb *running_thread = 0;
+
+void kthread_init() {
+    tcb *m = kmem_alloc(sizeof(tcb));
+    m->next = 0;
+
+    running_thread = m;
+}
+
+#define ERROR_CREATE_THREAD()                                                                      \
+    do {                                                                                           \
+        if (!t)                                                                                    \
+            return 0;                                                                              \
+        if (t->usr_stack)                                                                          \
+            kmem_free(t->usr_stack);                                                               \
+        kmem_free(t);                                                                              \
+        return 0;                                                                                  \
+    } while (0)
 
 tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
-    // later alligator
-    return 0;
+    tcb *t = kmem_alloc(sizeof(tcb));
+    if (!t)
+        ERROR_CREATE_THREAD();
+
+    t->usr_stack = usr_stack;
+    t->context.sp = (uint64)usr_stack + DEFAULT_STACK_SIZE -
+                    8 * 13; // because it tries to pop registers when restoring context
+    t->context.ra = (uint64)body;
+
+    scheduler_put(t);
+    return t;
 }
 
 int kthread_exit() {
@@ -11,5 +49,11 @@ int kthread_exit() {
 }
 
 void kthread_dispatch() {
-    // later alligator
+    tcb *prev = running_thread;
+    scheduler_put(prev);
+    tcb *next = scheduler_get();
+    if (next) {
+        running_thread = next;
+        context_switch(&prev->context, &next->context);
+    }
 }

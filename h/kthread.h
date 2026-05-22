@@ -3,18 +3,25 @@
 
 #include "../lib/hw.h"
 
+typedef struct tcb_context {
+    uint64 sp;
+    uint64 ra;
+} tcb_context;
+
 typedef struct tcb {
-    struct context {
-        uint64 ksp;
-        uint64 ra;
-    } ctx;
+    tcb_context context;
+    void *usr_stack;
     struct tcb *next;
     // more fields to come of course
 } tcb;
 
+extern tcb *running_thread;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void kthread_init();
 
 tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack);
 int kthread_exit();
