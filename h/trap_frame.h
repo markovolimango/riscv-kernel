@@ -5,6 +5,8 @@
 
 typedef struct {
     uint64 x[32];
+    uint64 sepc;
+    uint64 sstatus;
 } trap_frame;
 
 #endif // TRAP_FRAME_H

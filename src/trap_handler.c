@@ -39,7 +39,7 @@ static void handle_syscall(volatile trap_frame *tf) {
 
     tf->x[10] = ret;
 
-    sepc_inc(); // advance past ecall instruction
+    tf->sepc += 4; // advance past ecall instruction
 }
 
 static void handle_timer() {
@@ -103,7 +103,7 @@ void trap_handler(volatile trap_frame *tf) {
             break;
         case SCAUSE_ILLEGAL_INSTR:
             // currently just skips, should kill thread
-            sepc_inc();
+            tf->sepc += 4;
             break;
         case SCAUSE_LOAD_FAULT:
         case SCAUSE_STORE_FAULT:
@@ -117,7 +117,7 @@ void trap_handler(volatile trap_frame *tf) {
             break;
         default:
             // wtf
-            sepc_inc();
+            tf->sepc += 4;
             break;
         }
     }

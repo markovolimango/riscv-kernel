@@ -25,10 +25,10 @@ void main() {
 
     for (int i = 0; i < 10; i++) {
         putc('m');
-        kthread_dispatch();
+        thread_dispatch();
     }
     putc('\n');
-    int ret = kthread_exit();
+    int ret = thread_exit();
     putc('0' - ret);
 
     kmem_dump();
