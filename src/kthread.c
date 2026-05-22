@@ -11,6 +11,7 @@ extern void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);
 #endif
 
 tcb *running_thread = 0;
+static tcb *zombie = 0;
 
 void kthread_init() {
     tcb *m = kmem_alloc(sizeof(tcb));
@@ -30,12 +31,8 @@ void kthread_init() {
     } while (0)
 
 void wrapper() {
-    __putc('W');
     running_thread->body(running_thread->arg);
     kthread_exit();
-    __putc('E');
-    while (1)
-        ;
 }
 
 tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
@@ -61,6 +58,7 @@ tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
 
 int kthread_exit() {
     tcb *prev = running_thread;
+    zombie = prev;
     tcb *next = scheduler_get();
     if (next) {
         running_thread = next;
@@ -76,5 +74,10 @@ void kthread_dispatch() {
     if (next) {
         running_thread = next;
         context_switch(&prev->context, &next->context);
+        if (zombie) {
+            kmem_free(zombie->usr_stack);
+            kmem_free(zombie);
+            zombie = 0;
+        }
     }
 }

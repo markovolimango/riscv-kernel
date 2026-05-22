@@ -13,26 +13,27 @@ void shutdown() {
 
 extern "C" void trap_entry();
 
-void b1(void *arg) {
-    __putc('1');
-    // kthread_exit();
-}
+void b1(void *arg) { putc('1'); }
 
 void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
     kthread_init();
 
-    kthread_create(b1, 0, kmem_alloc(DEFAULT_STACK_SIZE));
+    thread_t t;
+    thread_create(&t, b1, 0);
 
     for (int i = 0; i < 10; i++) {
-        __putc('m');
+        putc('m');
         kthread_dispatch();
     }
+    putc('\n');
     int ret = kthread_exit();
-    __putc('0' - ret);
+    putc('0' - ret);
 
-    __putc('\n');
+    kmem_dump();
+
+    putc('\n');
 
     shutdown();
 }

@@ -4,5 +4,5 @@ build
 .DS_Store
 kernel
 kernel.asm
-CMakeLists.txt
 .clang-format
+.gdbinit

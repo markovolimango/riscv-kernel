@@ -10,10 +10,10 @@
 static void handle_syscall(volatile trap_frame *tf) {
     volatile uint64 ret = EOK;
     switch (tf->x[10]) {
-    case SYSCALL_MEM_ALLOC: // mem_alloc(size_t size)
+    case SYSCALL_MEM_ALLOC: // (size_t size)
         ret = (uint64)kmem_alloc_blocks((size_t)tf->x[11]);
         break;
-    case SYSCALL_MEM_FREE: // mem_free(void *ptr)
+    case SYSCALL_MEM_FREE: // (void *ptr)
         ret = (uint64)kmem_free((void *)tf->x[11]);
         break;
     case SYSCALL_THREAD_CREATE: // (tcb **handle, void (*start_routine)(void *), void *arg,
@@ -23,7 +23,12 @@ static void handle_syscall(volatile trap_frame *tf) {
         if (!*((tcb **)tf->x[11]))
             ret = -ENOMEM;
         break;
-
+    case SYSCALL_THREAD_EXIT: // ()
+        ret = kthread_exit();
+        break;
+    case SYSCALL_THREAD_DISPATCH: // ()
+        kthread_dispatch();
+        break;
     case SYSCALL_PUTC:
         __putc(tf->x[11]);
         break;
