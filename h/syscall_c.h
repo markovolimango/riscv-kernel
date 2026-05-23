@@ -3,6 +3,9 @@
 
 #include "../h/kmem.h"
 #include "../lib/hw.h"
+#include "../h/kthread.h"
+#include "../h/ksem.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,7 +14,6 @@ extern "C" {
 void *mem_alloc(size_t size);
 int mem_free(void *);
 
-struct tcb;
 #ifdef __cplusplus
 typedef tcb *thread_t;
 #else
@@ -21,11 +23,10 @@ int thread_create(thread_t *handle, void (*start_routine)(void *), void *arg);
 int thread_exit();
 void thread_dispatch();
 
-struct _sem;
 #ifdef __cplusplus
-typedef _sem *sem_t;
+typedef sem *sem_t;
 #else
-typedef struct _sem *sem_t;
+typedef struct sem *sem_t;
 #endif
 int sem_open(sem_t *handle, unsigned init);
 int sem_close(sem_t handle);

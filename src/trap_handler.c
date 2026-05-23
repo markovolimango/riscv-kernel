@@ -6,6 +6,7 @@
 #include "../h/trap_frame.h"
 #include "../lib/console.h"
 #include "../lib/hw.h"
+#include "../h/ksem.h"
 
 static void handle_syscall(volatile trap_frame *tf) {
     volatile uint64 ret = EOK;
@@ -28,6 +29,26 @@ static void handle_syscall(volatile trap_frame *tf) {
         break;
     case SYSCALL_THREAD_DISPATCH: // ()
         kthread_dispatch();
+        break;
+    case SYSCALL_SEM_OPEN: // (sem **handle, unsigned val)
+        *((sem **)tf->x[11]) = ksem_create((unsigned)tf->x[12]);
+        if (!*((sem **)tf->x[11]))
+            ret = -ENOMEM;
+        break;
+    case SYSCALL_SEM_CLOSE: // (sem *handle)
+        ret = ksem_close((sem *)tf->x[11]);
+        break;
+    case SYSCALL_SEM_WAIT: // (sem *handle)
+        ret = ksem_wait((sem *)tf->x[11]);
+        break;
+    case SYSCALL_SEM_SIGNAL: // (sem *handle)
+        ret = ksem_signal((sem *)tf->x[11]);
+        break;
+    case SYSCALL_SEM_WAIT_N: // (sem *handle, unsigned n)
+        ret = ksem_wait_n((sem *)tf->x[11], (unsigned)tf->x[12]);
+        break;
+    case SYSCALL_SEM_SIGNAL_N: // (sem *handle, unsigned n)
+        ret = ksem_signal_n((sem *)tf->x[11], (unsigned)tf->x[12]);
         break;
     case SYSCALL_PUTC:
         __putc(tf->x[11]);

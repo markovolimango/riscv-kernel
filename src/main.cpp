@@ -4,7 +4,10 @@
 #include "../h/syscall_c.h"
 #include "../h/halt.h"
 
+
 extern "C" void trap_entry();
+
+extern void userMain();
 
 void b1(void *arg) { putc('1'); }
 
@@ -13,16 +16,7 @@ void main() {
     kmem_init();
     kthread_init();
 
-    thread_t t;
-    thread_create(&t, b1, 0);
-
-    for (int i = 0; i < 10; i++) {
-        putc('m');
-        thread_dispatch();
-    }
-    putc('\n');
-    int ret = thread_exit();
-    putc('0' - ret);
+    userMain();
 
     kmem_dump();
 

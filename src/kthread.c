@@ -91,3 +91,7 @@ void kthread_block() {
         context_switch(&prev->context, &next->context);
     } else halt();
 }
+
+void kthread_unblock(tcb *thread) {
+    scheduler_put(thread);
+}
