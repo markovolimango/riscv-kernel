@@ -31,6 +31,8 @@ void kthread_init();
 tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack);
 int kthread_exit();
 void kthread_dispatch();
+void kthread_block(); // don't use this directly, will leak memory
+
 
 #ifdef __cplusplus
 }

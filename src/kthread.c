@@ -1,7 +1,6 @@
 #include "../h/kthread.h"
 #include "../h/errno.h"
 #include "../h/kmem.h"
-#include "../h/regs.h"
 #include "../h/scheduler.h"
 
 #ifdef __cplusplus
