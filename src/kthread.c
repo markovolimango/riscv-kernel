@@ -1,6 +1,7 @@
 #include "../h/kthread.h"
 #include "../h/errno.h"
 #include "../h/kmem.h"
+#include "../h/halt.h"
 #include "../h/scheduler.h"
 
 #ifdef __cplusplus
@@ -78,5 +79,15 @@ void kthread_dispatch() {
             kmem_free(zombie);
             zombie = 0;
         }
-    }
+    } else halt();
+}
+
+void kthread_block() {
+    tcb *prev = running_thread;
+    zombie = prev;
+    tcb *next = scheduler_get();
+    if (next) {
+        running_thread = next;
+        context_switch(&prev->context, &next->context);
+    } else halt();
 }
