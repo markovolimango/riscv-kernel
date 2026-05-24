@@ -1,8 +1,8 @@
 #include "../h/kthread.h"
 #include "../h/errno.h"
 #include "../h/kmem.h"
-#include "../h/halt.h"
 #include "../h/scheduler.h"
+#include "../h/shutdown.h"
 
 #ifdef __cplusplus
 extern "C" void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);
@@ -79,19 +79,18 @@ void kthread_dispatch() {
             kmem_free(zombie);
             zombie = 0;
         }
-    } else halt();
+    } else
+        shutdown("No more threads");
 }
 
 void kthread_block() {
     tcb *prev = running_thread;
-    zombie = prev;
     tcb *next = scheduler_get();
     if (next) {
         running_thread = next;
         context_switch(&prev->context, &next->context);
-    } else halt();
+    } else
+        shutdown("No more threads");
 }
 
-void kthread_unblock(tcb *thread) {
-    scheduler_put(thread);
-}
+void kthread_unblock(tcb *thread) { scheduler_put(thread); }

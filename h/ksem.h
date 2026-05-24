@@ -16,11 +16,19 @@ typedef struct sem {
     sem_node *tail;
 } sem;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 sem *ksem_create(unsigned init);
 int ksem_wait_n(sem *s, unsigned n);
 static inline int ksem_wait(sem *s) { return ksem_wait_n(s, 1); }
 int ksem_signal_n(sem *s, unsigned n);
 static inline int ksem_signal(sem *s) { return ksem_signal_n(s, 1); }
 int ksem_close(sem *s);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // KSEM_H

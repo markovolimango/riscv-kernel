@@ -1,12 +1,13 @@
 #include "../h/errno.h"
 #include "../h/kmem.h"
+#include "../h/ksem.h"
 #include "../h/kthread.h"
 #include "../h/regs.h"
+#include "../h/shutdown.h"
 #include "../h/syscall_codes.h"
 #include "../h/trap_frame.h"
 #include "../lib/console.h"
 #include "../lib/hw.h"
-#include "../h/ksem.h"
 
 static void handle_syscall(volatile trap_frame *tf) {
     volatile uint64 ret = EOK;
@@ -134,6 +135,7 @@ void trap_handler(volatile trap_frame *tf) {
             __putc('M');
             __putc('F');
             __putc('\n');
+            shutdown("oof");
             kthread_exit();
             break;
         default:

@@ -29,7 +29,7 @@ sem *ksem_create(unsigned init) {
 int ksem_wait_n(sem *s, unsigned n) {
     if (s == 0) return -EBADF;
     s->val -= n;
-    if (s->val > 0) {
+    if (s->val < 0) {
         sem_node node;
         node.thread = running_thread;
         node.next = 0;
