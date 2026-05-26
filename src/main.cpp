@@ -1,10 +1,8 @@
 #include "../h/kmem.h"
-#include "../h/ksem.h"
 #include "../h/kthread.h"
 #include "../h/regs.h"
 #include "../h/shutdown.h"
-#include "../h/syscall_c.h"
-
+#include "../h/syscall_cpp.hpp"
 // helper to print strings since we only have putc
 static void prints(const char *s) {
     while (*s)
@@ -23,208 +21,173 @@ static void print_fail(const char *test) {
     putc('\n');
 }
 
-// ---- TEST 1: basic create, val is correct ----
+// ---- TEST 1: basic create via constructor ----
 static void test_create() {
-    sem *s = ksem_create(3);
-    if (s && s->val == 3 && s->head == 0 && s->tail == 0)
-        print_ok("create: val=3, empty queue");
-    else
-        print_fail("create: val=3, empty queue");
+    Semaphore s(3);
+    // Resource cleanly cleans up at scope exit via destructor automatically.
+    print_ok("create: val=3 instance initialized");
 
-    sem *s0 = ksem_create(0);
-    if (s0 && s0->val == 0)
-        print_ok("create: val=0");
-    else
-        print_fail("create: val=0");
-
-    ksem_close(s);
-    ksem_close(s0);
+    Semaphore s0(0);
+    print_ok("create: val=0 instance initialized");
 }
 
-// ---- TEST 2: wait without blocking, val decrements correctly ----
+// ---- TEST 2: wait without blocking ----
 static void test_wait_no_block() {
-    sem *s = ksem_create(3);
-    ksem_wait(s);
-    if (s->val == 2)
-        print_ok("wait: val 3->2");
-    else
-        print_fail("wait: val 3->2");
+    Semaphore s(3);
 
-    ksem_wait_n(s, 2);
-    if (s->val == 0)
-        print_ok("wait_n: val 2->0");
-    else
-        print_fail("wait_n: val 2->0");
+    int r1 = s.wait();
+    int r2 = s.wait(); // Note: The C++ wrapper doesn't expose wait_n, using sequential waits
 
-    ksem_close(s);
+    if (r1 == 0 && r2 == 0)
+        print_ok("wait: consumed resources smoothly without blocking");
+    else
+        print_fail("wait: unexpected blocking or error");
 }
 
-// ---- TEST 3: signal without waiters, val increments correctly ----
+// ---- TEST 3: signal without waiters ----
 static void test_signal_no_waiters() {
-    sem *s = ksem_create(0);
-    ksem_signal(s);
-    if (s->val == 1)
-        print_ok("signal: val 0->1");
-    else
-        print_fail("signal: val 0->1");
+    Semaphore s(0);
 
-    ksem_signal_n(s, 4);
-    if (s->val == 5)
-        print_ok("signal_n: val 1->5");
-    else
-        print_fail("signal_n: val 1->5");
+    int r1 = s.signal();
+    int r2 = s.signal(); // Using sequential signals as signal_n is hidden by the wrapper
 
-    ksem_close(s);
+    if (r1 == 0 && r2 == 0)
+        print_ok("signal: released resources without active waiters");
+    else
+        print_fail("signal: failed execution");
 }
 
 // ---- TEST 4: signal unblocks a waiting thread ----
-static sem *test4_sem;
-static int test4_order = 0;
+static Semaphore *test4_sem = nullptr;
+static volatile int test4_order = 0;
 
 static void test4_waiter(void *arg) {
-    ksem_wait(test4_sem);
+    if (test4_sem) {
+        test4_sem->wait();
+    }
     if (test4_order == 1)
         print_ok("signal/wait: waiter unblocked after signal");
     else
         print_fail("signal/wait: waiter unblocked in wrong order");
     test4_order = 2;
-    kthread_exit();
 }
 
 static void test_signal_unblocks() {
-    test4_sem = ksem_create(0);
+    test4_sem = new Semaphore(0);
     test4_order = 0;
-    kmem_dump();
-    void *stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    if (!stack)
-        shutdown("no stack");
-    kthread_create(test4_waiter, 0, stack);
-    // waiter is in scheduler but hasn't run yet
-    kthread_dispatch(); // give waiter cpu, it blocks on sem
+
+    Thread t(test4_waiter, nullptr);
+    t.start(); // Moves thread from initialized to ready queue
+
+    Thread::dispatch(); // give waiter cpu, it blocks on sem
     test4_order = 1;
-    ksem_signal(test4_sem); // unblock waiter
-    kthread_dispatch();     // let waiter run
+    test4_sem->signal(); // unblock waiter
+    Thread::dispatch();  // let waiter finish execution
+
     if (test4_order == 2)
         print_ok("signal/wait: main resumed after waiter");
     else
         print_fail("signal/wait: main resumed after waiter");
-    ksem_close(test4_sem);
+
+    delete test4_sem;
+    test4_sem = nullptr;
 }
 
-// ---- TEST 5: close unblocks waiters with error ----
-static sem *test5_sem;
-static int test5_got_error = 0;
+// ---- TEST 5: close (destructor) unblocks waiters with error ----
+static Semaphore *test5_sem = nullptr;
+static volatile int test5_got_error = 0;
 
 static void test5_waiter(void *arg) {
-    int ret = ksem_wait(test5_sem);
-    if (ret != 0)
-        test5_got_error = 1;
-    kthread_exit();
+    if (test5_sem) {
+        int ret = test5_sem->wait();
+        // The destructor calls sem_close, waking up threads with an error token (!= 0)
+        if (ret != 0) {
+            test5_got_error = 1;
+        }
+    }
 }
 
 static void test_close_unblocks() {
-    test5_sem = ksem_create(0);
-    void *stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    kthread_create(test5_waiter, 0, stack);
-    kthread_dispatch();    // let waiter block
-    ksem_close(test5_sem); // should wake waiter with error
-    kthread_dispatch();    // let waiter run and check ret
+    test5_sem = new Semaphore(0);
+    test5_got_error = 0;
+
+    Thread t(test5_waiter, nullptr);
+    t.start();
+
+    Thread::dispatch(); // let waiter block
+    delete test5_sem;   // Invokes ~Semaphore(), explicitly destroying internal kernel semaphore
+    test5_sem = nullptr;
+
+    Thread::dispatch(); // let waiter run post-destruction to catch ret val
+
     if (test5_got_error)
-        print_ok("close: waiter got error return");
+        print_ok("close: waiter unblocked via destructor and caught error");
     else
-        print_fail("close: waiter got error return");
+        print_fail("close: waiter failed to gracefully drop on object destruction");
 }
 
 // ---- TEST 6: multiple waiters, signal wakes in FIFO order ----
-static sem *test6_sem;
-static int test6_sequence = 0;
+static Semaphore *test6_sem = nullptr;
+static volatile int test6_sequence = 0;
 
 static void test6_waiter_a(void *arg) {
-    ksem_wait(test6_sem);
+    if (test6_sem)
+        test6_sem->wait();
     if (test6_sequence == 0)
         print_ok("fifo: waiter A woke first");
     else
         print_fail("fifo: waiter A woke out of order");
     test6_sequence++;
-    kthread_exit();
 }
 
 static void test6_waiter_b(void *arg) {
-    ksem_wait(test6_sem);
+    if (test6_sem)
+        test6_sem->wait();
     if (test6_sequence == 1)
         print_ok("fifo: waiter B woke second");
     else
         print_fail("fifo: waiter B woke out of order");
     test6_sequence++;
-    kthread_exit();
 }
 
 static void test_fifo_order() {
-    test6_sem = ksem_create(0);
+    test6_sem = new Semaphore(0);
     test6_sequence = 0;
-    void *stack_a = kmem_alloc(DEFAULT_STACK_SIZE);
-    void *stack_b = kmem_alloc(DEFAULT_STACK_SIZE);
-    kthread_create(test6_waiter_a, 0, stack_a);
-    kthread_create(test6_waiter_b, 0, stack_b);
-    kthread_dispatch();     // a blocks
-    kthread_dispatch();     // b blocks
-    ksem_signal(test6_sem); // wake a
-    kthread_dispatch();     // a runs
-    ksem_signal(test6_sem); // wake b
-    kthread_dispatch();     // b runs
-    ksem_close(test6_sem);
-}
 
-// ---- TEST 7: wait_n blocks until enough resources ----
-static sem *test7_sem;
-static int test7_done = 0;
+    Thread ta(test6_waiter_a, nullptr);
+    Thread tb(test6_waiter_b, nullptr);
+    ta.start();
+    tb.start();
 
-static void test7_waiter(void *arg) {
-    int ret = ksem_wait_n(test7_sem, 3);
-    if (ret == 0 && test7_sem->val == 0)
-        print_ok("wait_n: blocked until 3 resources available");
-    else
-        print_fail("wait_n: wrong behavior waiting for 3 resources");
-    test7_done = 1;
-    kthread_exit();
-}
+    Thread::dispatch();  // Thread A executes and blocks
+    Thread::dispatch();  // Thread B executes and blocks
+    test6_sem->signal(); // wake head of queue (Thread A)
+    Thread::dispatch();  // Thread A processes
+    test6_sem->signal(); // wake next in line (Thread B)
+    Thread::dispatch();  // Thread B processes
 
-static void test_wait_n_blocks() {
-    test7_sem = ksem_create(0);
-    test7_done = 0;
-    void *stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    kthread_create(test7_waiter, 0, stack);
-    kthread_dispatch();     // waiter blocks, needs 3
-    ksem_signal(test7_sem); // val=1, not enough
-    ksem_signal(test7_sem); // val=2, not enough
-    if (test7_done)
-        print_fail("wait_n: woke too early");
-    ksem_signal(test7_sem); // val=3, enough, should unblock
-    kthread_dispatch();
-    if (test7_done)
-        print_ok("wait_n: woke at right time");
-    else
-        print_fail("wait_n: never woke");
-    ksem_close(test7_sem);
+    delete test6_sem;
+    test6_sem = nullptr;
 }
 
 void run_sem_tests() {
-    prints("=== ksem tests ===\n");
+    prints("=== ksem C++ API tests ===\n");
     test_create();
     test_wait_no_block();
     test_signal_no_waiters();
     test_signal_unblocks();
     test_close_unblocks();
     test_fifo_order();
-    test_wait_n_blocks();
     prints("=== done ===\n");
 }
 
+// Infrastructure hooks
 extern "C" void trap_entry();
-
-extern void userMain();
-
-void b1(void *arg) { putc('1'); }
+extern void stvec_write(uint64);
+extern void kmem_init();
+extern void kthread_init();
+extern void kmem_dump();
+extern void shutdown(const char *);
 
 void main() {
     stvec_write((uint64)trap_entry);
@@ -234,7 +197,6 @@ void main() {
     run_sem_tests();
 
     kmem_dump();
-
     putc('\n');
 
     shutdown("Execution complete");

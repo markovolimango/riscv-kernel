@@ -11,7 +11,7 @@ typedef struct sem_node {
 } sem_node;
 
 typedef struct sem {
-    int val;
+    unsigned val;
     sem_node *head;
     sem_node *tail;
 } sem;
