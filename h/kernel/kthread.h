@@ -17,7 +17,7 @@ typedef struct tcb {
     void *arg;
 
     struct tcb *next;
-    // more fields to come of course
+    time_t time_slice;
 } tcb;
 
 extern tcb *running_thread;

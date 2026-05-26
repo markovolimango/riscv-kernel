@@ -1,4 +1,5 @@
 #include "../../h/kernel/kthread.h"
+#include "../../h/arch/regs.h"
 #include "../../h/arch/shutdown.h"
 #include "../../h/kernel/kmem.h"
 #include "../../h/kernel/scheduler.h"
@@ -16,6 +17,7 @@ static tcb *zombie = 0;
 void kthread_init() {
     tcb *m = kmem_alloc(sizeof(tcb));
     m->next = 0;
+    m->time_slice = DEFAULT_TIME_SLICE;
 
     running_thread = m;
 }
@@ -31,6 +33,7 @@ void kthread_init() {
     } while (0)
 
 void wrapper() {
+    sstatus_set_sie();
     running_thread->body(running_thread->arg);
     kthread_exit();
 }
@@ -51,6 +54,8 @@ tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
 
     t->body = body;
     t->arg = arg;
+
+    t->time_slice = DEFAULT_TIME_SLICE;
 
     scheduler_put(t);
     return t;

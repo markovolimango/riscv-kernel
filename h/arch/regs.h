@@ -14,6 +14,12 @@
 #define SCAUSE_ECALL_U 8UL
 #define SCAUSE_ECALL_S 9UL
 
+#define SIP_SSIP (1UL << 1)
+
+#define SSTATUS_SIE (1UL << 1)
+
+#define SIE_SSIE (1UL << 1)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,6 +41,20 @@ static inline uint64 scause_code(uint64 scause_val) { return scause_val & ~SCAUS
 static inline uint8 scause_is_interrupt(uint64 scause_val) {
     return (scause_val & SCAUSE_INTERRUPT_BIT) != 0;
 }
+
+// SIP - Supervisor Interrupt Pending
+static inline void sip_reset_ssip() {
+    uint64 val;
+    asm volatile("csrr %0, sip" : "=r"(val));
+    val &= ~SIP_SSIP;
+    asm volatile("csrw sip, %0" : : "r"(val));
+}
+
+// SSTATUS - Supervisor Status
+static inline void sstatus_set_sie() { asm volatile("csrs sstatus, %0" : : "r"(SSTATUS_SIE)); }
+
+// SIE - Supervisor Interrupt Enable
+static inline void sie_set_ssie() { asm volatile("csrs sie, %0" : : "r"(SIE_SSIE)); }
 
 // STVEC - Supervisor Trap Vector
 static inline void stvec_write(uint64 val) { asm volatile("csrw stvec, %0" : : "r"(val)); }

@@ -5,6 +5,7 @@
 #include "../../h/kernel/kmem.h"
 #include "../../h/kernel/ksem.h"
 #include "../../h/kernel/kthread.h"
+#include "../../h/kernel/ktime.h"
 #include "../../h/utils/errno.h"
 #include "../../lib/console.h"
 #include "../../lib/hw.h"
@@ -65,15 +66,8 @@ static void handle_syscall(volatile trap_frame *tf) {
 }
 
 static void handle_timer() {
-    // Clear the software interrupt pending bit (SSIP, bit 1 of sip)
-    // Must be done to acknowledge the timer-forwarded interrupt
-    uint64 sip;
-    asm volatile("csrr %0, sip" : "=r"(sip));
-    sip &= ~(1ULL << 1); // clear SSIP
-    asm volatile("csrw sip, %0" ::"r"(sip));
-
-    // TODO: scheduler tick — preempt current thread if needed
-    // scheduler_tick(tf);
+    sip_reset_ssip();
+    ktime_tick();
 }
 
 static void handle_external_irq() {
