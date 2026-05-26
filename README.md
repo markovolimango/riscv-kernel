@@ -1,4 +1,4 @@
-# mango-kernel
+# riscv-kernel
 
 it's a kernel
 
