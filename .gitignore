@@ -1,9 +1,10 @@
-build
+/build
 .idea
 .vscode
 .DS_Store
-kernel
-kernel.asm
-.clang-format
-.gdbinit
-test
+/kernel
+/kernel.asm
+/.clang-format
+/.gdbinit
+/test
+/.asm-lsp.toml

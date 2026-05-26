@@ -1,8 +1,8 @@
-#include "../h/kthread.h"
-#include "../h/errno.h"
-#include "../h/kmem.h"
-#include "../h/scheduler.h"
-#include "../h/shutdown.h"
+#include "../../h/kernel/kthread.h"
+#include "../../h/arch/shutdown.h"
+#include "../../h/kernel/kmem.h"
+#include "../../h/kernel/scheduler.h"
+#include "../../h/utils/errno.h"
 
 #ifdef __cplusplus
 extern "C" void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);

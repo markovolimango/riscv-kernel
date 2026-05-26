@@ -1,6 +1,5 @@
-#include "../h/Thread.hpp"
-#include "../h/errno.h"
-#include "../h/syscall_c.h"
+#include "../../h/api/Thread.hpp"
+#include "../../h/syscall_c.h"
 
 Thread::Thread(void (*body)(void *), void *arg) : myHandle(nullptr), body(body), arg(arg) {}
 

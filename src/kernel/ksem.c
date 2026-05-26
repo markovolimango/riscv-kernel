@@ -1,6 +1,6 @@
-#include "../h/ksem.h"
-#include "../h/errno.h"
-#include "../h/kmem.h"
+#include "../../h/kernel/ksem.h"
+#include "../../h/kernel/kmem.h"
+#include "../../h/utils/errno.h"
 
 static void enqueue(sem *s, sem_node *node) {
     node->next = 0;

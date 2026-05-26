@@ -1,8 +1,10 @@
-#include "../h/kmem.h"
-#include "../h/kthread.h"
-#include "../h/regs.h"
-#include "../h/shutdown.h"
+#include "../h/arch/regs.h"
+#include "../h/arch/shutdown.h"
+#include "../h/kernel/kmem.h"
+#include "../h/kernel/kthread.h"
+#include "../h/syscall_c.h"
 #include "../h/syscall_cpp.hpp"
+
 // helper to print strings since we only have putc
 static void prints(const char *s) {
     while (*s)

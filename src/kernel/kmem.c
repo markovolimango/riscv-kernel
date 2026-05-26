@@ -1,5 +1,5 @@
-#include "../h/kmem.h"
-#include "../h/errno.h"
+#include "../../h/kernel/kmem.h"
+#include "../../h/utils/errno.h"
 
 typedef struct MetaBlock {
     size_t r_num_blocks;

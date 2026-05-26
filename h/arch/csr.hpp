@@ -1,7 +1,7 @@
 #ifndef CSR_HPP
 #define CSR_HPP
 
-#include "../lib/hw.h"
+#include "../../lib/hw.h"
 
 namespace csr {
 // ====== SCAUSE - Supervisor Cause ======

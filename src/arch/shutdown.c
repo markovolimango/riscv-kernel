@@ -1,5 +1,5 @@
-#include "../h/shutdown.h"
-#include "../lib/console.h"
+#include "../../h/arch/shutdown.h"
+#include "../../lib/console.h"
 
 #define SHUTDOWN_ADDR 0x100000
 #define SHUTDOWN_VAL 0x5555

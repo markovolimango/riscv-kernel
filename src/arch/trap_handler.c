@@ -1,13 +1,13 @@
-#include "../h/errno.h"
-#include "../h/kmem.h"
-#include "../h/ksem.h"
-#include "../h/kthread.h"
-#include "../h/regs.h"
-#include "../h/shutdown.h"
-#include "../h/syscall_codes.h"
-#include "../h/trap_frame.h"
-#include "../lib/console.h"
-#include "../lib/hw.h"
+#include "../../h/api/syscall_codes.h"
+#include "../../h/arch/regs.h"
+#include "../../h/arch/shutdown.h"
+#include "../../h/arch/trap_frame.h"
+#include "../../h/kernel/kmem.h"
+#include "../../h/kernel/ksem.h"
+#include "../../h/kernel/kthread.h"
+#include "../../h/utils/errno.h"
+#include "../../lib/console.h"
+#include "../../lib/hw.h"
 
 static void handle_syscall(volatile trap_frame *tf) {
     volatile uint64 ret = EOK;

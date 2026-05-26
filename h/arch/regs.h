@@ -1,7 +1,7 @@
 #ifndef REGS_H
 #define REGS_H
 
-#include "../lib/hw.h"
+#include "../../lib/hw.h"
 
 #define SCAUSE_INTERRUPT_BIT (1UL << 63)
 

@@ -1,7 +1,7 @@
 #ifndef KTHREAD_H
 #define KTHREAD_H
 
-#include "../lib/hw.h"
+#include "../../lib/hw.h"
 
 typedef struct tcb_context {
     uint64 sp;
@@ -33,7 +33,6 @@ int kthread_exit();
 void kthread_dispatch();
 void kthread_block();
 void kthread_unblock(tcb *thread);
-
 
 #ifdef __cplusplus
 }

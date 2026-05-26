@@ -1,11 +1,10 @@
 #ifndef SYSCALL_C_H
 #define SYSCALL_C_H
 
-#include "../h/kmem.h"
 #include "../lib/hw.h"
-#include "../h/kthread.h"
-#include "../h/ksem.h"
-
+#include "kernel/kmem.h"
+#include "kernel/ksem.h"
+#include "kernel/kthread.h"
 
 #ifdef __cplusplus
 extern "C" {

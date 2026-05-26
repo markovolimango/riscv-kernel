@@ -1,7 +1,7 @@
 #ifndef SEMAPHORE_HPP
 #define SEMAPHORE_HPP
 
-#include "ksem.h"
+#include "../kernel/ksem.h"
 
 class Semaphore {
   public:

@@ -1,5 +1,5 @@
-#include "../h/Semaphore.hpp"
-#include "../h/syscall_c.h"
+#include "../../h/api/Semaphore.hpp"
+#include "../../h/syscall_c.h"
 
 Semaphore::Semaphore(unsigned init) { sem_open(&myHandle, init); }
 

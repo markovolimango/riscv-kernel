@@ -1,10 +1,8 @@
 #ifndef SYSCALL_CPP_HPP
 #define SYSCALL_CPP_HPP
 
-#include "../lib/hw.h"
-#include "Semaphore.hpp"
-#include "Thread.hpp"
-#include "syscall_c.h"
+#include "api/Semaphore.hpp"
+#include "api/Thread.hpp"
 
 void *operator new(size_t);
 void operator delete(void *);

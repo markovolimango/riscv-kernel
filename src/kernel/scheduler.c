@@ -1,4 +1,4 @@
-#include "../h/scheduler.h"
+#include "../../h/kernel/scheduler.h"
 
 static tcb *head = 0;
 static tcb *tail = 0;

@@ -1,7 +1,6 @@
-#include "../h/syscall_c.h"
-#include "../h/errno.h"
-#include "../h/kmem.h"
-#include "../h/syscall_codes.h"
+#include "../../h/syscall_c.h"
+#include "../../h/api/syscall_codes.h"
+#include "../../h/utils/errno.h"
 
 static uint64 syscall(uint64 code, uint64 arg1, uint64 arg2, uint64 arg3, uint64 arg4) {
     register uint64 r0 __asm__("a0") = code;

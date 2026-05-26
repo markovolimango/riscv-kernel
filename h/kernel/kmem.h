@@ -1,8 +1,8 @@
 #ifndef KMEM_H
 #define KMEM_H
 
-#include "../lib/console.h"
-#include "../lib/hw.h"
+#include "../../lib/console.h"
+#include "../../lib/hw.h"
 
 #ifdef __cplusplus
 extern "C" {
