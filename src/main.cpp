@@ -94,7 +94,10 @@ static void test4_waiter(void *arg) {
 static void test_signal_unblocks() {
     test4_sem = ksem_create(0);
     test4_order = 0;
+    kmem_dump();
     void *stack = kmem_alloc(DEFAULT_STACK_SIZE);
+    if (!stack)
+        shutdown("no stack");
     kthread_create(test4_waiter, 0, stack);
     // waiter is in scheduler but hasn't run yet
     kthread_dispatch(); // give waiter cpu, it blocks on sem

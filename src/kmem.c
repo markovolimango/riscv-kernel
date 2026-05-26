@@ -102,9 +102,23 @@ int kmem_free(void *ptr) {
     left_block->r_is_free = 1;
     right_block->l_is_free = 1;
 
-    _Bool merged = 0;
-    if (right_block != end && right_block->r_is_free) {
-        merged = 1;
+    uint8 left_free = left_block != start && left_block->l_is_free;
+    uint8 right_free = right_block != end && right_block->r_is_free;
+
+    if (left_free && right_free) {
+        MetaBlock *prev_block = at_offs(left_block, -left_block->l_num_blocks - 1);
+        MetaBlock *next_block = at_offs(right_block, right_block->r_num_blocks + 1);
+
+        prev_block->r_num_blocks += left_block->r_num_blocks + right_block->r_num_blocks + 2;
+        next_block->l_num_blocks = prev_block->r_num_blocks;
+
+        if (right_block->r_next_free)
+            right_block->r_next_free->r_prev_free = right_block->r_prev_free;
+        if (right_block->r_prev_free)
+            right_block->r_prev_free->r_next_free = right_block->r_next_free;
+        else
+            free_list_head = prev_block;
+    } else if (right_free) {
         MetaBlock *next_block = at_offs(right_block, right_block->r_num_blocks + 1);
 
         left_block->r_num_blocks += right_block->r_num_blocks + 1;
@@ -119,24 +133,12 @@ int kmem_free(void *ptr) {
             right_block->r_prev_free->r_next_free = left_block;
         else
             free_list_head = left_block;
-    }
-    if (left_block != start && left_block->l_is_free) {
-        merged = 1;
+    } else if (left_free) {
         MetaBlock *prev_block = at_offs(left_block, -left_block->l_num_blocks - 1);
 
         prev_block->r_num_blocks += left_block->r_num_blocks + 1;
         right_block->l_num_blocks = prev_block->r_num_blocks;
-
-        prev_block->r_next_free = left_block->r_next_free;
-        prev_block->r_prev_free = left_block->r_prev_free;
-        if (left_block->r_next_free)
-            left_block->r_next_free->r_prev_free = prev_block;
-        if (left_block->r_prev_free)
-            left_block->r_prev_free->r_next_free = prev_block;
-        else
-            free_list_head = prev_block;
-    }
-    if (!merged) {
+    } else {
         left_block->r_prev_free = 0;
         left_block->r_next_free = free_list_head;
         if (free_list_head)

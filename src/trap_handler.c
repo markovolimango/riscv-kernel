@@ -77,30 +77,8 @@ static void handle_timer() {
 }
 
 static void handle_external_irq() {
-    // later alligator
-    /*
     uint64 irq = plic_claim();
-    switch (irq) {
-    case CONSOLE_IRQ:
-        // Read side
-        while (*(volatile uint8 *)CONSOLE_STATUS & (1 << 0)) {
-            uint8 ch = *(volatile uint8 *)CONSOLE_RX_DATA;
-            console_rx_push(ch);
-        }
-        // TX side (if interrupt-driven output)
-        while (*(volatile uint8 *)CONSOLE_STATUS & (1 << 5)) {
-            int ch = console_tx_pop();
-            if (ch < 0)
-                break;
-            *(volatile uint8 *)CONSOLE_TX_DATA = (uint8)ch;
-        }
-        break;
-    default:
-        // Unknown device — acknowledge and ignore to avoid livelock
-        break;
-    }
     plic_complete(irq);
-    */
 }
 
 void trap_handler(volatile trap_frame *tf) {
