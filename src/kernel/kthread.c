@@ -2,7 +2,7 @@
 #include "../../h/arch/regs.h"
 #include "../../h/arch/shutdown.h"
 #include "../../h/kernel/kmem.h"
-#include "../../h/kernel/scheduler.h"
+#include "../../h/kernel/ksched.h"
 #include "../../h/utils/errno.h"
 
 #ifdef __cplusplus
@@ -57,14 +57,14 @@ tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
 
     t->time_slice = DEFAULT_TIME_SLICE;
 
-    scheduler_put(t);
+    ksched_put(t);
     return t;
 }
 
 int kthread_exit() {
     tcb *prev = running_thread;
     zombie = prev;
-    tcb *next = scheduler_get();
+    tcb *next = ksched_get();
     if (next) {
         running_thread = next;
         context_switch(&prev->context, &next->context);
@@ -74,8 +74,8 @@ int kthread_exit() {
 
 void kthread_dispatch() {
     tcb *prev = running_thread;
-    scheduler_put(prev);
-    tcb *next = scheduler_get();
+    ksched_put(prev);
+    tcb *next = ksched_get();
     if (next) {
         running_thread = next;
         context_switch(&prev->context, &next->context);
@@ -90,7 +90,7 @@ void kthread_dispatch() {
 
 void kthread_block() {
     tcb *prev = running_thread;
-    tcb *next = scheduler_get();
+    tcb *next = ksched_get();
     if (next) {
         running_thread = next;
         context_switch(&prev->context, &next->context);
@@ -98,4 +98,4 @@ void kthread_block() {
         shutdown("No more threads");
 }
 
-void kthread_unblock(tcb *thread) { scheduler_put(thread); }
+void kthread_unblock(tcb *thread) { ksched_put(thread); }

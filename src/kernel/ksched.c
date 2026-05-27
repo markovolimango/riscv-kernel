@@ -1,9 +1,9 @@
-#include "../../h/kernel/scheduler.h"
+#include "../../h/kernel/ksched.h"
 
 static tcb *head = 0;
 static tcb *tail = 0;
 
-tcb *scheduler_get() {
+tcb *ksched_get() {
     if (!head)
         return 0;
     tcb *t = head;
@@ -13,7 +13,7 @@ tcb *scheduler_get() {
     return t;
 }
 
-void scheduler_put(tcb *thread) {
+void ksched_put(tcb *thread) {
     thread->next = 0;
     if (tail == 0)
         head = thread;
