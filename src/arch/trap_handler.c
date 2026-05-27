@@ -23,8 +23,7 @@ static void handle_syscall(volatile trap_frame *tf) {
                                 // void* stack_space)
         *((tcb **)tf->x[11]) =
             kthread_create((void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14]);
-        if (!*((tcb **)tf->x[11]))
-            ret = -ENOMEM;
+        if (!*((tcb **)tf->x[11])) ret = -ENOMEM;
         break;
     case SYSCALL_THREAD_EXIT: // ()
         ret = kthread_exit();
@@ -34,8 +33,7 @@ static void handle_syscall(volatile trap_frame *tf) {
         break;
     case SYSCALL_SEM_OPEN: // (sem **handle, unsigned val)
         *((sem **)tf->x[11]) = ksem_create((unsigned)tf->x[12]);
-        if (!*((sem **)tf->x[11]))
-            ret = -ENOMEM;
+        if (!*((sem **)tf->x[11])) ret = -ENOMEM;
         break;
     case SYSCALL_SEM_CLOSE: // (sem *handle)
         ret = ksem_close((sem *)tf->x[11]);
@@ -51,6 +49,9 @@ static void handle_syscall(volatile trap_frame *tf) {
         break;
     case SYSCALL_SEM_SIGNAL_N: // (sem *handle, unsigned n)
         ret = ksem_signal_n((sem *)tf->x[11], (unsigned)tf->x[12]);
+        break;
+    case SYSCALL_TIME_SLEEP: // (time_t ticks)
+        ret = ktime_sleep((time_t)tf->x[11]);
         break;
     case SYSCALL_PUTC:
         __putc(tf->x[11]);

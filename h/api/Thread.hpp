@@ -1,7 +1,6 @@
 #ifndef THREAD_HPP
 #define THREAD_HPP
 
-#include "../../lib/hw.h"
 #include "../kernel/kthread.h"
 
 class Thread {

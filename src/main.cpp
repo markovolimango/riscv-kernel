@@ -7,16 +7,13 @@
 
 extern "C" void trap_entry();
 
-void thread_a(void *arg) {
-    volatile long i = 0;
-    while (1)
-        i++; // never calls putc, never yields
-}
-
-void thread_b(void *arg) {
-    while (1) {
-        __putc('B');
-    }
+void thread_body(void *arg) {
+    int id = (uint64)arg;
+    putc('A' + id); // print on entry
+    thread_dispatch();
+    time_sleep(id * 2 + 1); // sleep different amounts: 1, 3, 5 ticks
+    putc('a' + id);         // print on wakeup
+    thread_exit();
 }
 
 void main() {
@@ -26,10 +23,14 @@ void main() {
     sstatus_set_sie();
     sie_set_ssie();
 
-    thread_t a, b;
-    thread_create(&a, thread_a, nullptr);
-    thread_create(&b, thread_b, nullptr);
+    thread_t t0, t1, t2;
+    thread_create(&t0, thread_body, (void *)0);
+    thread_create(&t1, thread_body, (void *)1);
+    thread_create(&t2, thread_body, (void *)2);
     thread_dispatch();
+
+    while (1)
+        ;
 
     kmem_dump();
     putc('\n');
