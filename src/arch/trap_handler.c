@@ -22,7 +22,7 @@ static void handle_syscall(volatile trap_frame *tf) {
     case SYSCALL_THREAD_CREATE: // (tcb **handle, void (*start_routine)(void *), void *arg,
                                 // void* stack_space)
         *((tcb **)tf->x[11]) =
-            kthread_create((void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14]);
+            kthread_create((void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14], 0);
         if (!*((tcb **)tf->x[11])) ret = -ENOMEM;
         break;
     case SYSCALL_THREAD_EXIT: // ()
