@@ -1,4 +1,5 @@
 #include "../../h/kernel/kthread.h"
+#include "../../h/api/syscall_codes.h"
 #include "../../h/arch/regs.h"
 #include "../../h/arch/shutdown.h"
 #include "../../h/kernel/kmem.h"
@@ -22,31 +23,31 @@ void kthread_init() {
     running_thread = m;
 }
 
-#define ERROR_CREATE_THREAD()                                                                      \
-    do {                                                                                           \
-        if (!t)                                                                                    \
-            return 0;                                                                              \
-        if (t->usr_stack)                                                                          \
-            kmem_free(t->usr_stack);                                                               \
-        kmem_free(t);                                                                              \
-        return 0;                                                                                  \
-    } while (0)
+static void user_body_wrapper(void (*body)(void *), void *arg) {
+    body(arg);
+    asm volatile("li a0, %0\n ecall" ::"i"(SYSCALL_THREAD_EXIT));
+}
 
-void wrapper() {
-    sstatus_set_sie();
-    running_thread->body(running_thread->arg);
-    kthread_exit();
+static void user_entry_wrapper() {
+    void (*body)(void *) = running_thread->body;
+    void *arg = running_thread->arg;
+    sepc_write((uint64)user_body_wrapper);
+    sstatus_clear_spp();
+    sstatus_set_spie();
+    asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
 }
 
 tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack) {
     tcb *t = kmem_alloc(sizeof(tcb));
-    if (!t)
-        ERROR_CREATE_THREAD();
+    if (!t) {
+        kmem_free(usr_stack);
+        return 0;
+    }
 
     t->usr_stack = usr_stack;
     t->context.sp = (uint64)usr_stack + DEFAULT_STACK_SIZE -
                     8 * 14; // because it tries to pop registers when restoring context
-    t->context.ra = (uint64)wrapper;
+    t->context.ra = (uint64)user_entry_wrapper;
 
     uint64 *stack = (uint64 *)t->context.sp;
     for (int i = 0; i < 13; i++)
@@ -84,8 +85,7 @@ void kthread_dispatch() {
             kmem_free(zombie);
             zombie = 0;
         }
-    } else
-        shutdown("No more threads");
+    } else shutdown("No more threads");
 }
 
 void kthread_block() {
@@ -94,8 +94,7 @@ void kthread_block() {
     if (next) {
         running_thread = next;
         context_switch(&prev->context, &next->context);
-    } else
-        shutdown("No more threads");
+    } else shutdown("No more threads");
 }
 
 void kthread_unblock(tcb *thread) { ksched_put(thread); }

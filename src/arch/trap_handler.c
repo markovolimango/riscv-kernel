@@ -97,8 +97,7 @@ void trap_handler(volatile trap_frame *tf) {
             handle_syscall(tf); // advances sepc by 4 internally
             break;
         case SCAUSE_ILLEGAL_INSTR:
-            // currently just skips, should kill thread
-            tf->sepc += 4;
+            kthread_exit();
             break;
         case SCAUSE_LOAD_FAULT:
         case SCAUSE_STORE_FAULT:
@@ -108,7 +107,6 @@ void trap_handler(volatile trap_frame *tf) {
             __putc('M');
             __putc('F');
             __putc('\n');
-            shutdown("oof");
             kthread_exit();
             break;
         default:

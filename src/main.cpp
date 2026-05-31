@@ -16,21 +16,24 @@ void thread_body(void *arg) {
     thread_exit();
 }
 
+void idle(void *arg) {
+    while (1)
+        ;
+}
+
 void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
     kthread_init();
-    sstatus_set_sie();
-    sie_set_ssie();
 
-    thread_t t0, t1, t2;
+    thread_t t0, t1, t2, tidle;
     thread_create(&t0, thread_body, (void *)0);
     thread_create(&t1, thread_body, (void *)1);
     thread_create(&t2, thread_body, (void *)2);
-    thread_dispatch();
+    kthread_dispatch();
 
     while (1)
-        ;
+        kthread_dispatch();
 
     kmem_dump();
     putc('\n');

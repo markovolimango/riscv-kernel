@@ -17,6 +17,8 @@
 #define SIP_SSIP (1UL << 1)
 
 #define SSTATUS_SIE (1UL << 1)
+#define SSTATUS_SPIE (1UL << 5)
+#define SSTATUS_SPP (1UL << 8)
 
 #define SIE_SSIE (1UL << 1)
 
@@ -51,10 +53,14 @@ static inline void sip_reset_ssip() {
 }
 
 // SSTATUS - Supervisor Status
-static inline void sstatus_set_sie() { asm volatile("csrs sstatus, %0" : : "r"(SSTATUS_SIE)); }
+static inline void sstatus_clear_spp() { asm volatile("csrc sstatus, %0" : : "r"(SSTATUS_SPP)); }
+static inline void sstatus_set_spie() { asm volatile("csrs sstatus, %0" : : "r"(SSTATUS_SPIE)); }
 
 // SIE - Supervisor Interrupt Enable
 static inline void sie_set_ssie() { asm volatile("csrs sie, %0" : : "r"(SIE_SSIE)); }
+
+// SEPC - System Exception Program Counter
+static inline void sepc_write(uint64 val) { asm volatile("csrw sepc, %0" : : "r"(val)); }
 
 // STVEC - Supervisor Trap Vector
 static inline void stvec_write(uint64 val) { asm volatile("csrw stvec, %0" : : "r"(val)); }

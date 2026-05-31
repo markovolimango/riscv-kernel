@@ -11,12 +11,8 @@ int Thread::start() { return thread_create(&myHandle, wrapper, this); }
 
 void Thread::wrapper(void *thisWrapper) {
     Thread *thisThread = (Thread *)thisWrapper;
-    if (thisThread->body) {
-        thisThread->body(thisThread->arg);
-    } else {
-        thisThread->run();
-    }
-    thread_exit();
+    if (thisThread->body) thisThread->body(thisThread->arg);
+    else thisThread->run();
 }
 
 void Thread::dispatch() { thread_dispatch(); }
