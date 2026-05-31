@@ -1,5 +1,6 @@
 #include "../h/arch/regs.h"
 #include "../h/arch/shutdown.h"
+#include "../h/kernel/kio.h"
 #include "../h/kernel/kmem.h"
 #include "../h/kernel/kthread.h"
 #include "../h/syscall_c.h"
@@ -25,8 +26,11 @@ void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
     kthread_init();
+    kio_init();
 
-    thread_t t0, t1, t2, tidle;
+    putc('m');
+
+    thread_t t0, t1, t2;
     thread_create(&t0, thread_body, (void *)0);
     thread_create(&t1, thread_body, (void *)1);
     thread_create(&t2, thread_body, (void *)2);

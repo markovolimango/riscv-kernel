@@ -2,6 +2,7 @@
 #include "../../h/arch/regs.h"
 #include "../../h/arch/shutdown.h"
 #include "../../h/arch/trap_frame.h"
+#include "../../h/kernel/kio.h"
 #include "../../h/kernel/kmem.h"
 #include "../../h/kernel/ksem.h"
 #include "../../h/kernel/kthread.h"
@@ -21,8 +22,8 @@ static void handle_syscall(volatile trap_frame *tf) {
         break;
     case SYSCALL_THREAD_CREATE: // (tcb **handle, void (*start_routine)(void *), void *arg,
                                 // void* stack_space)
-        *((tcb **)tf->x[11]) =
-            kthread_create((void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14], 0);
+        *((tcb **)tf->x[11]) = kthread_create_on_stack((void (*)(void *))tf->x[12],
+                                                       (void *)tf->x[13], (void *)tf->x[14], 0);
         if (!*((tcb **)tf->x[11])) ret = -ENOMEM;
         break;
     case SYSCALL_THREAD_EXIT: // ()
@@ -54,7 +55,7 @@ static void handle_syscall(volatile trap_frame *tf) {
         ret = ktime_sleep((time_t)tf->x[11]);
         break;
     case SYSCALL_PUTC:
-        __putc(tf->x[11]);
+        kputc((char)tf->x[11]);
         break;
     default:
         ret = -ENOSYS;

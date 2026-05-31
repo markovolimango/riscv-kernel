@@ -23,8 +23,8 @@ void kthread_init() {
     running_thread = m;
 }
 
-static void kernel_body_wrapper(void (*body)(void *), void *arg) {
-    body(arg);
+static void kernel_entry_wrapper() {
+    running_thread->body(running_thread->arg);
     kthread_exit();
 }
 
@@ -42,7 +42,7 @@ static void user_entry_wrapper() {
     asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
 }
 
-tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel) {
+tcb *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel) {
     tcb *t = kmem_alloc(sizeof(tcb));
     if (!t) {
         kmem_free(usr_stack);
@@ -52,7 +52,7 @@ tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack, uint8 is_k
     t->usr_stack = usr_stack;
     t->context.sp = (uint64)usr_stack + DEFAULT_STACK_SIZE -
                     8 * 14; // because it tries to pop registers when restoring context
-    t->context.ra = is_kernel ? (uint64)kernel_body_wrapper : (uint64)user_entry_wrapper;
+    t->context.ra = is_kernel ? (uint64)kernel_entry_wrapper : (uint64)user_entry_wrapper;
 
     uint64 *stack = (uint64 *)t->context.sp;
     for (int i = 0; i < 13; i++)
@@ -65,6 +65,12 @@ tcb *kthread_create(void (*body)(void *), void *arg, void *usr_stack, uint8 is_k
 
     ksched_put(t);
     return t;
+}
+
+tcb *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel) {
+    void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
+    if (!usr_stack) return 0;
+    return kthread_create_on_stack(body, arg, usr_stack, is_kernel);
 }
 
 int kthread_exit() {
