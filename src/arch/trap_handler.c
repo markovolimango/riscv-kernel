@@ -54,8 +54,11 @@ static void handle_syscall(volatile trap_frame *tf) {
     case SYSCALL_TIME_SLEEP: // (time_t ticks)
         ret = ktime_sleep((time_t)tf->x[11]);
         break;
-    case SYSCALL_PUTC:
+    case SYSCALL_PUTC: // (char c)
         kputc((char)tf->x[11]);
+        break;
+    case SYSCALL_GETC: // ()
+        ret = (uint64)kgetc();
         break;
     default:
         ret = -ENOSYS;
@@ -74,6 +77,8 @@ static void handle_timer() {
 
 static void handle_external_irq() {
     uint64 irq = plic_claim();
+    if (irq == CONSOLE_IRQ) kio_handle_console_irq();
+    // else neki error? warning?
     plic_complete(irq);
 }
 
@@ -111,8 +116,7 @@ void trap_handler(volatile trap_frame *tf) {
             kthread_exit();
             break;
         default:
-            // wtf
-            tf->sepc += 4;
+            shutdown("unknown trap");
             break;
         }
     }

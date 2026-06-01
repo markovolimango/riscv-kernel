@@ -22,20 +22,21 @@ void idle(void *arg) {
         ;
 }
 
+void io_test(void *arg) {
+    while (1) {
+        char c = getc();
+        putc(c);
+    }
+}
+
 void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
     kthread_init();
     kio_init();
 
-    putc('m');
-
-    thread_t t0, t1, t2;
-    thread_create(&t0, thread_body, (void *)0);
-    thread_create(&t1, thread_body, (void *)1);
-    thread_create(&t2, thread_body, (void *)2);
-    kthread_dispatch();
-
+    kthread_create(idle, 0, 0);
+    kthread_create(io_test, 0, 0);
     while (1)
         kthread_dispatch();
 
