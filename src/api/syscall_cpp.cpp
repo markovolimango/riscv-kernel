@@ -4,7 +4,3 @@
 void *operator new(size_t size) { return mem_alloc(size); }
 
 void operator delete(void *ptr) { mem_free(ptr); }
-
-char Console::getc() { return ::getc(); }
-
-void Console::putc(char c) { ::putc(c); }
