@@ -17,6 +17,7 @@ typedef struct tcb {
     void *arg;
 
     struct tcb *next;
+    uint8 priority; // 0-2, 0 = highest
     time_t time_slice;
 } tcb;
 

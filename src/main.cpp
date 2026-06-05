@@ -35,10 +35,13 @@ void main() {
     kthread_init();
     kio_init();
 
-    kthread_create(idle, 0, 0);
+    kputc('0' + __builtin_ctz((uint32)2));
+
     kthread_create(io_test, 0, 0);
-    while (1)
+    sstatus_set_sie();
+    while (1) {
         kthread_dispatch();
+    }
 
     kmem_dump();
     putc('\n');

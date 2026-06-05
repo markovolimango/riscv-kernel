@@ -55,6 +55,7 @@ static inline void sip_reset_ssip() {
 // SSTATUS - Supervisor Status
 static inline void sstatus_clear_spp() { asm volatile("csrc sstatus, %0" : : "r"(SSTATUS_SPP)); }
 static inline void sstatus_set_spie() { asm volatile("csrs sstatus, %0" : : "r"(SSTATUS_SPIE)); }
+static inline void sstatus_set_sie() { asm volatile("csrs sstatus, %0" : : "r"(SSTATUS_SIE)); }
 
 // SIE - Supervisor Interrupt Enable
 static inline void sie_set_ssie() { asm volatile("csrs sie, %0" : : "r"(SIE_SSIE)); }

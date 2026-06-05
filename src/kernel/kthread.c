@@ -19,6 +19,7 @@ void kthread_init() {
     tcb *m = kmem_alloc(sizeof(tcb));
     m->next = 0;
     m->time_slice = DEFAULT_TIME_SLICE;
+    m->priority = 2;
 
     running_thread = m;
 }
@@ -61,6 +62,7 @@ tcb *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, u
     t->body = body;
     t->arg = arg;
 
+    t->priority = 1;
     t->time_slice = DEFAULT_TIME_SLICE;
 
     ksched_put(t);
