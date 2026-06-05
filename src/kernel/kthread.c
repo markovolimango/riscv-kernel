@@ -24,7 +24,8 @@ static void user_entry_wrapper() {
     asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
 }
 
-thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel) {
+thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel,
+                                uint8 priority) {
     thread *t = kmem_alloc(sizeof(thread));
     if (!t) {
         kmem_free(usr_stack);
@@ -43,33 +44,8 @@ thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack
     t->body = body;
     t->arg = arg;
 
-    t->priority = 1;
+    t->priority = priority;
     t->time_slice = DEFAULT_TIME_SLICE;
 
-    ksched_put(t);
     return t;
 }
-
-thread *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel) {
-    void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    if (!usr_stack) return 0;
-    return kthread_create_on_stack(body, arg, usr_stack, is_kernel);
-}
-
-int kthread_exit() {
-    running_thread->state = THREAD_EXITED;
-    ksched_switch();
-    return -ESRCH;
-}
-
-void kthread_dispatch() {
-    running_thread->state = THREAD_READY;
-    ksched_switch();
-}
-
-void kthread_block() {
-    running_thread->state = THREAD_BLOCKED;
-    ksched_switch();
-}
-
-void kthread_unblock(thread *thread) { ksched_put(thread); }

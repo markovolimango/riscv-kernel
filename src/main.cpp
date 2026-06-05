@@ -14,7 +14,6 @@ void thread_body(void *arg) {
     thread_dispatch();
     time_sleep(id * 2 + 1); // sleep different amounts: 1, 3, 5 ticks
     putc('a' + id);         // print on wakeup
-    thread_exit();
 }
 
 void io_test(void *arg) {
@@ -32,14 +31,12 @@ void main() {
 
     kputc('0' + __builtin_ctz((uint32)2));
 
-    kthread_create(io_test, 0, 0);
-    kthread_create(thread_body, (void *)10, 0);
-    kthread_create(thread_body, (void *)20, 0);
-    kthread_create(thread_body, (void *)30, 0);
-    sstatus_set_sie();
-    while (1) {
+    ksched_put(kthread_create(io_test, 0, 0, 8));
+    ksched_put(kthread_create(thread_body, (void *)10, 0, 8));
+    ksched_put(kthread_create(thread_body, (void *)20, 0, 8));
+    ksched_put(kthread_create(thread_body, (void *)30, 0, 8));
+    while (1)
         kthread_dispatch();
-    }
 
     kmem_dump();
     putc('\n');

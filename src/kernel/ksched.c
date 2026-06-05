@@ -12,8 +12,8 @@ extern void context_switch(struct thread_context *prev, struct thread_context *n
 thread *running_thread = 0;
 static thread *zombie = 0;
 
-static thread *heads[3] = {0, 0, 0};
-static thread *tails[3] = {0, 0, 0};
+static thread *heads[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static thread *tails[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static void enqueue(thread *t) {
     int p = t->priority;
@@ -29,7 +29,7 @@ void ksched_put(thread *t) {
 }
 
 static thread *peek() {
-    for (uint8 p = 0; p < 3; p++) {
+    for (uint8 p = 15; p >= 0; p--) {
         if (heads[p] == 0) continue;
         return heads[p];
     }
@@ -37,7 +37,7 @@ static thread *peek() {
 }
 
 static thread *dequeue() {
-    for (uint8 p = 0; p < 3; p++) {
+    for (uint8 p = 15; p >= 0; p--) {
         if (heads[p] == 0) continue;
         thread *t = heads[p];
         heads[p] = heads[p]->next;
@@ -59,8 +59,7 @@ void ksched_switch() {
     switch (prev->state) {
     case THREAD_RUNNING:
         next = peek();
-        // watch out here, must change priority goes lower-higher
-        if (next->priority >= prev->priority) return;
+        if (next->priority <= prev->priority) return;
         dequeue();
         prev->state = THREAD_READY;
         enqueue(prev);
@@ -95,7 +94,7 @@ void ksched_switch() {
 }
 
 static void idle_body(void *arg) {
-    sstatus_set_sie();
+    // sstatus_set_sie();
     while (1) {
         // running_thread->state = THREAD_READY;
         // ksched_switch();
@@ -103,28 +102,6 @@ static void idle_body(void *arg) {
 }
 
 void ksched_init() {
-    thread *main_thread = kmem_alloc(sizeof(thread));
-    if (!main_thread) shutdown("ksched_init failed");
-    main_thread->priority = 2;
-    main_thread->state = THREAD_RUNNING;
-    main_thread->time_slice = DEFAULT_TIME_SLICE;
-    main_thread->next = 0;
-    running_thread = main_thread;
-
-    thread *idle_thread = kmem_alloc(sizeof(thread));
-    if (!idle_thread) shutdown("ksched_init failed");
-    idle_thread->context.ra = (uint64)idle_body;
-    idle_thread->usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    if (!idle_thread->usr_stack) shutdown("ksched_init failed");
-    idle_thread->context.sp = (uint64)idle_thread->usr_stack + DEFAULT_STACK_SIZE - 8 * 14;
-    uint64 *stack = (uint64 *)idle_thread->context.sp;
-    for (int i = 0; i < 13; i++) // zero out the stack, may be unnecessary
-        stack[i] = 0;
-    idle_thread->body = idle_body;
-    idle_thread->arg = 0;
-    idle_thread->priority = 2;
-    idle_thread->state = THREAD_READY;
-    idle_thread->time_slice = DEFAULT_TIME_SLICE;
-    idle_thread->next = 0;
-    enqueue(idle_thread);
+    running_thread = kthread_create(0, 0, 1, 0);    // main
+    ksched_put(kthread_create(idle_body, 0, 0, 1)); // idle, change is_kernel to 1 later
 }
