@@ -17,7 +17,7 @@ class Thread {
 
   private:
     static void wrapper(void *arg);
-    tcb *myHandle;
+    thread *myHandle;
     void (*body)(void *);
     void *arg;
 };

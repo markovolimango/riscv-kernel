@@ -1,7 +1,6 @@
 #include "../../h/kernel/kthread.h"
 #include "../../h/api/syscall_codes.h"
 #include "../../h/arch/regs.h"
-#include "../../h/arch/shutdown.h"
 #include "../../h/kernel/kmem.h"
 #include "../../h/kernel/ksched.h"
 #include "../../h/utils/errno.h"
@@ -25,8 +24,8 @@ static void user_entry_wrapper() {
     asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
 }
 
-tcb *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel) {
-    tcb *t = kmem_alloc(sizeof(tcb));
+thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel) {
+    thread *t = kmem_alloc(sizeof(thread));
     if (!t) {
         kmem_free(usr_stack);
         return 0;
@@ -51,26 +50,26 @@ tcb *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, u
     return t;
 }
 
-tcb *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel) {
+thread *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel) {
     void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
     if (!usr_stack) return 0;
     return kthread_create_on_stack(body, arg, usr_stack, is_kernel);
 }
 
 int kthread_exit() {
-    running_thread->state = TCB_EXITED;
+    running_thread->state = THREAD_EXITED;
     ksched_switch();
     return -ESRCH;
 }
 
 void kthread_dispatch() {
-    running_thread->state = TCB_READY;
+    running_thread->state = THREAD_READY;
     ksched_switch();
 }
 
 void kthread_block() {
-    running_thread->state = TCB_BLOCKED;
+    running_thread->state = THREAD_BLOCKED;
     ksched_switch();
 }
 
-void kthread_unblock(tcb *thread) { ksched_put(thread); }
+void kthread_unblock(thread *thread) { ksched_put(thread); }

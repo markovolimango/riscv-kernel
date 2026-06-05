@@ -14,9 +14,9 @@ void *mem_alloc(size_t size);
 int mem_free(void *);
 
 #ifdef __cplusplus
-typedef tcb *thread_t;
+typedef thread *thread_t;
 #else
-typedef struct tcb *thread_t;
+typedef struct thrad *thread_t;
 #endif
 int thread_create(thread_t *handle, void (*start_routine)(void *), void *arg);
 int thread_exit();

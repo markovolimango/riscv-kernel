@@ -41,7 +41,7 @@ void kio_init() {
     tx_buf.head = tx_buf.tail = 0;
     tx_buf.space = ksem_create(IO_BUF_SIZE);
     tx_buf.data = ksem_create(0);
-    tcb *tx_thread = kthread_create(tx_thread_body, 0, 1);
+    thread *tx_thread = kthread_create(tx_thread_body, 0, 1);
     tx_thread->priority = 0;
 
     rx_buf.head = rx_buf.tail = 0;

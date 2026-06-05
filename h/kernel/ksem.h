@@ -4,7 +4,7 @@
 #include "kthread.h"
 
 typedef struct sem_node {
-    tcb *thread;
+    thread *t;
     struct sem_node *next;
     unsigned n;
     uint8 sem_closed;

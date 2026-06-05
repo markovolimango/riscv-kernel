@@ -3,7 +3,7 @@
 #include "../../h/utils/errno.h"
 
 typedef struct sleep_node {
-    tcb *thread;
+    thread *t;
     time_t ticks;
     struct sleep_node *next;
 } sleep_node;
@@ -13,8 +13,8 @@ static sleep_node *sleep_head = 0;
 static inline void tick_sleep() {
     if (sleep_head) sleep_head->ticks--;
     while (sleep_head != 0 && sleep_head->ticks == 0) {
-        sleep_head->thread->time_slice = DEFAULT_TIME_SLICE;
-        kthread_unblock(sleep_head->thread);
+        sleep_head->t->time_slice = DEFAULT_TIME_SLICE;
+        kthread_unblock(sleep_head->t);
         sleep_head = sleep_head->next;
     }
 }
@@ -49,7 +49,7 @@ static inline void insert_sleep_node(sleep_node *node) {
 int ktime_sleep(time_t ticks) {
     if (ticks == 0) return EOK;
     sleep_node node;
-    node.thread = running_thread;
+    node.t = running_thread;
     node.ticks = ticks;
     node.next = 0;
     insert_sleep_node(&node);

@@ -2,7 +2,7 @@
 #include "../h/arch/shutdown.h"
 #include "../h/kernel/kio.h"
 #include "../h/kernel/kmem.h"
-#include "../h/kernel/kthread.h"
+#include "../h/kernel/ksched.h"
 #include "../h/syscall_c.h"
 #include "../h/syscall_cpp.hpp"
 

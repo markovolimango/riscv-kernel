@@ -4,6 +4,7 @@
 #include "../../h/arch/trap_frame.h"
 #include "../../h/kernel/kio.h"
 #include "../../h/kernel/kmem.h"
+#include "../../h/kernel/ksched.h"
 #include "../../h/kernel/ksem.h"
 #include "../../h/kernel/kthread.h"
 #include "../../h/kernel/ktime.h"
@@ -20,11 +21,11 @@ static void handle_syscall(volatile trap_frame *tf) {
     case SYSCALL_MEM_FREE: // (void *ptr)
         ret = (uint64)kmem_free((void *)tf->x[11]);
         break;
-    case SYSCALL_THREAD_CREATE: // (tcb **handle, void (*start_routine)(void *), void *arg,
+    case SYSCALL_THREAD_CREATE: // (thread **handle, void (*start_routine)(void *), void *arg,
                                 // void* stack_space)
-        *((tcb **)tf->x[11]) = kthread_create_on_stack((void (*)(void *))tf->x[12],
-                                                       (void *)tf->x[13], (void *)tf->x[14], 0);
-        if (!*((tcb **)tf->x[11])) ret = -ENOMEM;
+        *((thread **)tf->x[11]) = kthread_create_on_stack((void (*)(void *))tf->x[12],
+                                                          (void *)tf->x[13], (void *)tf->x[14], 0);
+        if (!*((thread **)tf->x[11])) ret = -ENOMEM;
         break;
     case SYSCALL_THREAD_EXIT: // ()
         ret = kthread_exit();
