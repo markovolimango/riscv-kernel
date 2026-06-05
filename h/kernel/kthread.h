@@ -1,33 +1,11 @@
 #ifndef KTHREAD_H
 #define KTHREAD_H
 
-#include "../../lib/hw.h"
-
-typedef struct tcb_context {
-    uint64 sp;
-    uint64 ra;
-} tcb_context;
-
-typedef struct tcb {
-    tcb_context context;
-
-    void *usr_stack;
-
-    void (*body)(void *);
-    void *arg;
-
-    struct tcb *next;
-    uint8 priority; // 0-2, 0 = highest
-    time_t time_slice;
-} tcb;
-
-extern tcb *running_thread;
+#include "ksched.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-void kthread_init();
 
 tcb *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel);
 tcb *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel);

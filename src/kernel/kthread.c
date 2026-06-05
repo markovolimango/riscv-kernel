@@ -6,24 +6,6 @@
 #include "../../h/kernel/ksched.h"
 #include "../../h/utils/errno.h"
 
-#ifdef __cplusplus
-extern "C" void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);
-#else
-extern void context_switch(tcb_context *old_ctx, tcb_context *new_ctx);
-#endif
-
-tcb *running_thread = 0;
-static tcb *zombie = 0;
-
-void kthread_init() {
-    tcb *m = kmem_alloc(sizeof(tcb));
-    m->next = 0;
-    m->time_slice = DEFAULT_TIME_SLICE;
-    m->priority = 2;
-
-    running_thread = m;
-}
-
 static void kernel_entry_wrapper() {
     running_thread->body(running_thread->arg);
     kthread_exit();
@@ -56,7 +38,7 @@ tcb *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, u
     t->context.ra = is_kernel ? (uint64)kernel_entry_wrapper : (uint64)user_entry_wrapper;
 
     uint64 *stack = (uint64 *)t->context.sp;
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < 13; i++) // zero out the stack, may be unnecessary
         stack[i] = 0;
 
     t->body = body;
@@ -76,38 +58,19 @@ tcb *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel) {
 }
 
 int kthread_exit() {
-    tcb *prev = running_thread;
-    zombie = prev;
-    tcb *next = ksched_get();
-    if (next) {
-        running_thread = next;
-        context_switch(&prev->context, &next->context);
-    }
+    running_thread->state = TCB_EXITED;
+    ksched_switch();
     return -ESRCH;
 }
 
 void kthread_dispatch() {
-    tcb *prev = running_thread;
-    ksched_put(prev);
-    tcb *next = ksched_get();
-    if (next) {
-        running_thread = next;
-        context_switch(&prev->context, &next->context);
-        if (zombie) {
-            kmem_free(zombie->usr_stack);
-            kmem_free(zombie);
-            zombie = 0;
-        }
-    } else shutdown("No more threads");
+    running_thread->state = TCB_READY;
+    ksched_switch();
 }
 
 void kthread_block() {
-    tcb *prev = running_thread;
-    tcb *next = ksched_get();
-    if (next) {
-        running_thread = next;
-        context_switch(&prev->context, &next->context);
-    } else shutdown("No more threads");
+    running_thread->state = TCB_BLOCKED;
+    ksched_switch();
 }
 
 void kthread_unblock(tcb *thread) { ksched_put(thread); }

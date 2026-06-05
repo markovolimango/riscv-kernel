@@ -80,7 +80,7 @@ static void handle_external_irq() {
     if (irq == CONSOLE_IRQ) kio_handle_console_irq();
     // else neki error? warning?
     plic_complete(irq);
-    kthread_dispatch();
+    ksched_switch();
 }
 
 void trap_handler(volatile trap_frame *tf) {

@@ -17,11 +17,6 @@ void thread_body(void *arg) {
     thread_exit();
 }
 
-void idle(void *arg) {
-    while (1)
-        ;
-}
-
 void io_test(void *arg) {
     while (1) {
         char c = getc();
@@ -32,12 +27,15 @@ void io_test(void *arg) {
 void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
-    kthread_init();
+    ksched_init();
     kio_init();
 
     kputc('0' + __builtin_ctz((uint32)2));
 
     kthread_create(io_test, 0, 0);
+    kthread_create(thread_body, (void *)10, 0);
+    kthread_create(thread_body, (void *)20, 0);
+    kthread_create(thread_body, (void *)30, 0);
     sstatus_set_sie();
     while (1) {
         kthread_dispatch();
