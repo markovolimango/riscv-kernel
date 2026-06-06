@@ -73,8 +73,9 @@ static void handle_syscall(volatile trap_frame *tf) {
 }
 
 static void handle_timer() {
-    sip_reset_ssip();
+    sip_clear_ssip();
     ktime_tick();
+    ksched_switch();
 }
 
 static void handle_external_irq() {

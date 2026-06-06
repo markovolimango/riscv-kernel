@@ -45,12 +45,7 @@ static inline uint8 scause_is_interrupt(uint64 scause_val) {
 }
 
 // SIP - Supervisor Interrupt Pending
-static inline void sip_reset_ssip() {
-    uint64 val;
-    asm volatile("csrr %0, sip" : "=r"(val));
-    val &= ~SIP_SSIP;
-    asm volatile("csrw sip, %0" : : "r"(val));
-}
+static inline void sip_clear_ssip() { asm volatile("csrc sip, %0" : : "r"(SIP_SSIP)); }
 
 // SSTATUS - Supervisor Status
 static inline void sstatus_clear_spp() { asm volatile("csrc sstatus, %0" : : "r"(SSTATUS_SPP)); }

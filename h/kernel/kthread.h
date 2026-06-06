@@ -5,7 +5,7 @@
 #include "../../h/utils/errno.h"
 #include "../../lib/hw.h"
 
-enum thread_state { THREAD_RUNNING, THREAD_READY, THREAD_EXITED, THREAD_BLOCKED };
+enum thread_state { THREAD_RUNNING, THREAD_READY, THREAD_EXITED, THREAD_BLOCKED, THREAD_EXPIRED };
 
 struct thread_context {
     uint64 sp;
