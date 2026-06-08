@@ -29,7 +29,7 @@ void main() {
     ksched_init();
     kio_init();
 
-    kputc('0' + __builtin_ctz((uint32)2));
+    kputc('0' + __builtin_clz((uint32)2));
 
     ksched_put(kthread_create(io_test, 0, 0, 8));
     ksched_put(kthread_create(thread_body, (void *)10, 0, 8));

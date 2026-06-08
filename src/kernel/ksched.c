@@ -1,7 +1,6 @@
 #include "../../h/kernel/ksched.h"
-#include "../../h/arch/regs.h"
-#include "../../h/arch/shutdown.h"
 #include "../../h/kernel/kmem.h"
+#include "../../h/utils/thread_pq.h"
 
 #ifdef __cplusplus
 extern "C" void context_switch(thread_context *prev, thread_context *next);
@@ -9,50 +8,23 @@ extern "C" void context_switch(thread_context *prev, thread_context *next);
 extern void context_switch(struct thread_context *prev, struct thread_context *next);
 #endif
 
-typedef struct pq {
-    thread *heads[16];
-    thread *tails[16];
-    uint16 not_empty[16];
-} pq;
-
 thread *running_thread = 0;
 static thread *zombie = 0;
-static pq active = {0};
+static thread_pq pq1 = {0}, pq2 = {0};
+static thread_pq *active = &pq1, *expired = &pq2;
 
-static void pq_enqueue(pq *q, thread *t) {
-    int p = t->priority;
-    t->next = 0;
-    if (q->tails[p] == 0) q->heads[p] = t;
-    else q->tails[p]->next = t;
-    q->tails[p] = t;
-    q->not_empty[p] = 1;
-}
-
-static thread *pq_peek(pq *q) {
-    for (short p = 15; p >= 0; p--) {
-        if (q->heads[p] == 0) continue;
-        return q->heads[p];
+static inline thread *dequeue() {
+    if (active->not_empty_mask == 0) {
+        thread_pq *tmp = active;
+        active = expired;
+        expired = tmp;
     }
-    return 0;
-}
-
-static thread *pq_dequeue(pq *q) {
-    for (short p = 15; p >= 0; p--) {
-        if (q->heads[p] == 0) continue;
-        thread *t = q->heads[p];
-        q->heads[p] = q->heads[p]->next;
-        if (q->heads[p] == 0) {
-            q->tails[p] = 0;
-            q->not_empty[p] = 0;
-        }
-        return t;
-    }
-    return 0;
+    return pq_dequeue(active);
 }
 
 void ksched_put(thread *t) {
     t->state = THREAD_READY;
-    pq_enqueue(&active, t);
+    pq_enqueue(active, t);
 }
 
 static inline void free_zombie() {
@@ -66,42 +38,42 @@ void ksched_switch() {
     thread *prev = running_thread, *next;
     switch (prev->state) {
     case THREAD_RUNNING:
-        next = pq_peek(&active);
+        next = pq_peek(active);
         if (next->priority <= prev->priority) return;
-        pq_dequeue(&active);
+        dequeue();
         prev->state = THREAD_READY;
-        pq_enqueue(&active, prev);
+        pq_enqueue(active, prev);
         next->state = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
         break;
     case THREAD_READY:
-        next = pq_dequeue(&active);
-        pq_enqueue(&active, prev);
+        next = dequeue();
+        pq_enqueue(active, prev);
         next->state = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
         break;
     case THREAD_BLOCKED:
-        next = pq_dequeue(&active);
+        next = dequeue();
         next->state = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
         break;
     case THREAD_EXPIRED:
-        next = pq_dequeue(&active);
+        next = dequeue();
         next->state = THREAD_RUNNING;
         prev->state = THREAD_READY;
-        pq_enqueue(&active, prev);
+        pq_enqueue(expired, prev);
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
         break;
     case THREAD_EXITED:
-        next = pq_dequeue(&active);
+        next = dequeue();
         next->state = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
