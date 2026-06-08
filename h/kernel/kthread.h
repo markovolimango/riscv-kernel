@@ -24,6 +24,8 @@ typedef struct thread {
     enum thread_state state;
     time_t time_slice;
 
+    struct thread *joiner;
+
     struct thread *next;
 } thread;
 
@@ -46,12 +48,6 @@ static inline thread *kthread_create(void (*body)(void *), void *arg, uint8 is_k
     return kthread_create_on_stack(body, arg, usr_stack, is_kernel, priority);
 }
 
-static inline int kthread_exit() {
-    running_thread->state = THREAD_EXITED;
-    ksched_switch();
-    return -ESRCH;
-}
-
 static inline void kthread_dispatch() {
     running_thread->state = THREAD_READY;
     ksched_switch();
@@ -63,6 +59,18 @@ static inline void kthread_block() {
 }
 
 static inline void kthread_unblock(thread *t) { ksched_put(t); }
+
+static inline int kthread_exit() {
+    if (running_thread->joiner) kthread_unblock(running_thread->joiner);
+    running_thread->state = THREAD_EXITED;
+    ksched_switch();
+    return -ESRCH;
+}
+
+static inline void kthread_join(thread *t) {
+    t->joiner = running_thread;
+    kthread_block();
+}
 
 #ifdef __cplusplus
 }

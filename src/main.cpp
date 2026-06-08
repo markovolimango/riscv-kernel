@@ -23,6 +23,13 @@ void io_test(void *arg) {
     }
 }
 
+void usrm(void *) {
+    thread *t1, *t2, *t3;
+    thread_create(&t1, thread_body, (void *)10);
+    thread_create(&t2, thread_body, (void *)20);
+    thread_create(&t3, thread_body, (void *)30);
+}
+
 void main() {
     stvec_write((uint64)trap_entry);
     kmem_init();
@@ -31,12 +38,10 @@ void main() {
 
     kputc('0' + __builtin_clz((uint32)2));
 
-    ksched_put(kthread_create(io_test, 0, 0, 8));
-    ksched_put(kthread_create(thread_body, (void *)10, 0, 8));
-    ksched_put(kthread_create(thread_body, (void *)20, 0, 8));
-    ksched_put(kthread_create(thread_body, (void *)30, 0, 8));
-    while (1)
-        kthread_dispatch();
+    // ksched_put(kthread_create(io_test, 0, 0, 8));
+    thread *um = kthread_create(usrm, 0, 0, 8);
+    ksched_put(um);
+    kthread_join(um);
 
     kmem_dump();
     putc('\n');
