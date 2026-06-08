@@ -1,4 +1,5 @@
 #include "../../h/kernel/ksched.h"
+#include "../../h/kernel/kio.h"
 #include "../../h/kernel/kmem.h"
 #include "../../h/utils/thread_pq.h"
 
@@ -9,6 +10,7 @@ extern void context_switch(struct thread_context *prev, struct thread_context *n
 #endif
 
 thread *running_thread = 0;
+static thread *idle_thread;
 static thread *zombie = 0;
 static thread_pq pq1 = {0}, pq2 = {0};
 static thread_pq *active = &pq1, *expired = &pq2;
@@ -39,7 +41,7 @@ void ksched_switch() {
     switch (prev->state) {
     case THREAD_RUNNING:
         next = pq_peek(active);
-        if (next->priority <= prev->priority) return;
+        if (!next || next->priority <= prev->priority) return;
         dequeue();
         prev->state = THREAD_READY;
         pq_enqueue(active, prev);
@@ -50,6 +52,10 @@ void ksched_switch() {
         break;
     case THREAD_READY:
         next = dequeue();
+        if (!next) {
+            running_thread->state = THREAD_RUNNING;
+            return;
+        }
         pq_enqueue(active, prev);
         next->state = THREAD_RUNNING;
         running_thread = next;
@@ -58,6 +64,7 @@ void ksched_switch() {
         break;
     case THREAD_BLOCKED:
         next = dequeue();
+        if (!next) next = idle_thread;
         next->state = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
@@ -65,6 +72,10 @@ void ksched_switch() {
         break;
     case THREAD_EXPIRED:
         next = dequeue();
+        if (!next) {
+            running_thread->state = THREAD_RUNNING;
+            return;
+        }
         next->state = THREAD_RUNNING;
         prev->state = THREAD_READY;
         pq_enqueue(expired, prev);
@@ -74,6 +85,7 @@ void ksched_switch() {
         break;
     case THREAD_EXITED:
         next = dequeue();
+        if (!next) next = idle_thread;
         next->state = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
@@ -85,12 +97,14 @@ void ksched_switch() {
 static void idle_body(void *arg) {
     // sstatus_set_sie();
     while (1) {
+        kputc('i');
+        asm volatile("wfi");
         // running_thread->state = THREAD_READY;
         // ksched_switch();
     }
 }
 
 void ksched_init() {
-    running_thread = kthread_create(0, 0, 1, 0);    // main
-    ksched_put(kthread_create(idle_body, 0, 0, 1)); // idle, change is_kernel to 1 later
+    running_thread = kthread_create(0, 0, 1, 0);      // main
+    idle_thread = kthread_create(idle_body, 0, 0, 1); // idle, change is_kernel to 1 later
 }

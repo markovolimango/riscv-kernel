@@ -9,8 +9,8 @@ class Console {
     static void putc(char);
 };
 
-inline char Console::getc() { return getc(); }
+inline char Console::getc() { return ::getc(); }
 
-inline void Console::putc(char c) { putc(c); }
+inline void Console::putc(char c) { ::putc(c); }
 
 #endif

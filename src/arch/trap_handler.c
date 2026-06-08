@@ -111,12 +111,6 @@ void trap_handler(volatile trap_frame *tf) {
             break;
         case SCAUSE_LOAD_FAULT:
         case SCAUSE_STORE_FAULT:
-            __putc('\n');
-            __putc('M');
-            __putc('E');
-            __putc('M');
-            __putc('F');
-            __putc('\n');
             kthread_exit();
             break;
         default:

@@ -13,7 +13,6 @@ static sleep_node *sleep_head = 0;
 static inline void tick_sleep() {
     if (sleep_head) sleep_head->ticks--;
     while (sleep_head != 0 && sleep_head->ticks == 0) {
-        sleep_head->t->time_slice = DEFAULT_TIME_SLICE;
         kthread_unblock(sleep_head->t);
         sleep_head = sleep_head->next;
     }
