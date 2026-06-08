@@ -21,4 +21,11 @@ inline PeriodicThread::PeriodicThread(time_t period) : period(period), toTermina
 
 inline void PeriodicThread::terminate() { toTerminate = true; }
 
+inline void PeriodicThread::run() {
+    while (!toTerminate) {
+        periodicActivation();
+        time_sleep(period);
+    }
+}
+
 #endif
