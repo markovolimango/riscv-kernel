@@ -1,23 +1,35 @@
 #include "../../h/kernel/kio.h"
+#include "../../h/arch/shutdown.h"
 #include "../../h/kernel/ksem.h"
 #include "../../lib/hw.h"
+
+static inline uint8 tx_ready() { return *(uint8 *)CONSOLE_STATUS & CONSOLE_TX_STATUS_BIT; }
+
+static inline uint8 rx_ready() { return *(uint8 *)CONSOLE_STATUS & CONSOLE_RX_STATUS_BIT; }
 
 #define IO_BUF_SIZE 128
 
 typedef struct {
     char buf[IO_BUF_SIZE];
-    unsigned head;
-    unsigned tail;
+    uint8 head;
+    uint8 tail;
     sem *space;
     sem *data;
 } io_buf;
+
+static void io_buf_init(io_buf *buf) {
+    buf->head = buf->tail = 0;
+    buf->space = ksem_create(IO_BUF_SIZE);
+    buf->data = ksem_create(0);
+    if (!buf->space || !buf->data) shutdown(""); // no msg cause kio_init failed lol
+}
 
 static void io_buf_put(io_buf *buf, char c) {
     buf->buf[buf->tail] = c;
     buf->tail = (buf->tail + 1) % IO_BUF_SIZE;
 }
 
-static char io_buf_get(io_buf *buf) {
+static char io_buf_take(io_buf *buf) {
     char c = buf->buf[buf->head];
     buf->head = (buf->head + 1) % IO_BUF_SIZE;
     return c;
@@ -25,48 +37,56 @@ static char io_buf_get(io_buf *buf) {
 
 static io_buf tx_buf;
 static io_buf rx_buf;
+static thread *tx_thread;
+static uint8 tx_irq_pending = 0;
 
-void tx_thread_body(void *arg) {
+static void tx_thread_body(void *arg) {
     while (1) {
         ksem_wait(tx_buf.data);
-        char c = io_buf_get(&tx_buf);
-        while (!(*(uint8 *)CONSOLE_STATUS & (1 << 5)))
-            ;
-        *(uint8 *)CONSOLE_TX_DATA = c;
+        if (!tx_ready()) {
+            tx_irq_pending = 0;
+            kthread_block();
+        }
+        *(uint8 *)CONSOLE_TX_DATA = io_buf_take(&tx_buf);
         ksem_signal(tx_buf.space);
     }
 }
 
 void kio_init() {
-    tx_buf.head = tx_buf.tail = 0;
-    tx_buf.space = ksem_create(IO_BUF_SIZE);
-    tx_buf.data = ksem_create(0);
-    ksched_put(kthread_create(tx_thread_body, 0, 1, 12)); // tx thread
-
-    rx_buf.head = rx_buf.tail = 0;
-    rx_buf.space = ksem_create(IO_BUF_SIZE);
-    rx_buf.data = ksem_create(0);
+    io_buf_init(&tx_buf);
+    io_buf_init(&rx_buf);
+    tx_thread = kthread_create(tx_thread_body, 0, 1, 12);
 }
 
-void kputc(char c) {
+void kio_putc(char c) {
     ksem_wait(tx_buf.space);
     io_buf_put(&tx_buf, c);
     ksem_signal(tx_buf.data);
+    ksched_switch();
 }
 
-char kgetc() {
+char kio_getc() {
     ksem_wait(rx_buf.data);
-    char c = io_buf_get(&rx_buf);
-    ksem_signal(rx_buf.space);
-    return c;
+    return io_buf_take(&rx_buf);
+}
+
+static inline void handle_tx_irq() {
+    tx_irq_pending = 1;
+    kthread_unblock(tx_thread);
+}
+
+static inline void handle_rx_irq() {
+    uint8 count = 0;
+    while (rx_ready()) {
+        char c = (char)(*(uint8 *)CONSOLE_RX_DATA);
+        io_buf_put(&rx_buf, c);
+        count++;
+    }
+    ksem_signal_n(rx_buf.data, count);
 }
 
 void kio_handle_console_irq() {
-    uint8 status = *(uint8 *)CONSOLE_STATUS;
-    if (!(status & CONSOLE_RX_STATUS_BIT)) return;
-    char c = *(uint8 *)CONSOLE_RX_DATA;
-    if (rx_buf.data->val < IO_BUF_SIZE) {
-        io_buf_put(&rx_buf, c);
-        ksem_signal(rx_buf.data);
-    }
+    if (tx_ready() && !tx_irq_pending) handle_tx_irq();
+    else if (rx_ready()) handle_rx_irq();
+    // else wtf??
 }

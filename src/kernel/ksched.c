@@ -97,7 +97,6 @@ void ksched_switch() {
 static void idle_body(void *arg) {
     // sstatus_set_sie();
     while (1) {
-        kputc('i');
         asm volatile("wfi");
         // running_thread->state = THREAD_READY;
         // ksched_switch();

@@ -57,10 +57,10 @@ static void handle_syscall(volatile trap_frame *tf) {
         ret = ktime_sleep((time_t)tf->x[11]);
         break;
     case SYSCALL_PUTC: // (char c)
-        kputc((char)tf->x[11]);
+        kio_putc((char)tf->x[11]);
         break;
     case SYSCALL_GETC: // ()
-        ret = (uint64)kgetc();
+        ret = (uint64)kio_getc();
         break;
     default:
         ret = -ENOSYS;

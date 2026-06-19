@@ -44,6 +44,8 @@ thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack
     t->body = body;
     t->arg = arg;
 
+    t->state = THREAD_BLOCKED;
+
     t->priority = priority;
     t->time_slice = DEFAULT_TIME_SLICE;
 

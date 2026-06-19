@@ -6,8 +6,8 @@ extern "C" {
 #endif
 
 void kio_init();
-void kputc(char c);
-char kgetc();
+void kio_putc(char c);
+char kio_getc();
 void kio_handle_console_irq();
 
 #ifdef __cplusplus
