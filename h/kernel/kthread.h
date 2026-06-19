@@ -58,7 +58,11 @@ static inline void kthread_block() {
     ksched_switch();
 }
 
-static inline void kthread_unblock(thread *t) { ksched_put(t); }
+static inline void kthread_unblock(thread *t) {
+    if (t->state != THREAD_BLOCKED) return;
+    t->state = THREAD_READY;
+    ksched_put(t);
+}
 
 static inline int kthread_exit() {
     if (running_thread->joiner) kthread_unblock(running_thread->joiner);
