@@ -25,27 +25,27 @@ static inline thread *dequeue() {
 }
 
 void ksched_put(thread *t) {
-    t->state = THREAD_READY;
+    t->status = THREAD_READY;
     pq_enqueue(active, t);
 }
 
 static inline void free_zombie() {
     if (zombie == 0) return;
-    if (zombie->usr_stack) kmem_free(zombie->usr_stack);
+    if (zombie->user_stack) kmem_free(zombie->user_stack);
     kmem_free(zombie);
     zombie = 0;
 }
 
 void ksched_switch() {
     thread *prev = running_thread, *next;
-    switch (prev->state) {
+    switch (prev->status) {
     case THREAD_RUNNING:
         next = pq_peek(active);
         if (!next || next->priority <= prev->priority) return;
         dequeue();
-        prev->state = THREAD_READY;
+        prev->status = THREAD_READY;
         pq_enqueue(active, prev);
-        next->state = THREAD_RUNNING;
+        next->status = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
@@ -53,11 +53,11 @@ void ksched_switch() {
     case THREAD_READY:
         next = dequeue();
         if (!next) {
-            running_thread->state = THREAD_RUNNING;
+            running_thread->status = THREAD_RUNNING;
             return;
         }
         pq_enqueue(active, prev);
-        next->state = THREAD_RUNNING;
+        next->status = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
@@ -65,7 +65,7 @@ void ksched_switch() {
     case THREAD_BLOCKED:
         next = dequeue();
         if (!next) next = idle_thread;
-        next->state = THREAD_RUNNING;
+        next->status = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         free_zombie();
@@ -73,11 +73,11 @@ void ksched_switch() {
     case THREAD_EXPIRED:
         next = dequeue();
         if (!next) {
-            running_thread->state = THREAD_RUNNING;
+            running_thread->status = THREAD_RUNNING;
             return;
         }
-        next->state = THREAD_RUNNING;
-        prev->state = THREAD_READY;
+        next->status = THREAD_RUNNING;
+        prev->status = THREAD_READY;
         pq_enqueue(expired, prev);
         running_thread = next;
         context_switch(&prev->context, &next->context);
@@ -86,7 +86,7 @@ void ksched_switch() {
     case THREAD_EXITED:
         next = dequeue();
         if (!next) next = idle_thread;
-        next->state = THREAD_RUNNING;
+        next->status = THREAD_RUNNING;
         running_thread = next;
         context_switch(&prev->context, &next->context);
         // this should never be reached

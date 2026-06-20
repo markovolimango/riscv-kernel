@@ -22,7 +22,7 @@ static inline void tick_running() {
     running_thread->time_slice -= 1;
     if (running_thread->time_slice == 0) {
         running_thread->time_slice = DEFAULT_TIME_SLICE;
-        running_thread->state = THREAD_EXPIRED;
+        running_thread->status = THREAD_EXPIRED;
     }
 }
 

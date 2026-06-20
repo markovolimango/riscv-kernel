@@ -5,22 +5,22 @@
 #include "../../h/utils/errno.h"
 #include "../../lib/hw.h"
 
-enum thread_state { THREAD_RUNNING, THREAD_READY, THREAD_EXITED, THREAD_BLOCKED, THREAD_EXPIRED };
+enum thread_status { THREAD_RUNNING, THREAD_READY, THREAD_EXITED, THREAD_BLOCKED, THREAD_EXPIRED };
 
 struct thread_context {
-    uint64 ksp;
+    uint64 sp;
     uint64 ra;
 };
 
 typedef struct thread {
     struct thread_context context;
-    void *usr_stack;
+    void *user_stack;
     void *kernel_stack;
 
     void (*body)(void *);
     void *arg;
 
-    enum thread_state state;
+    enum thread_status status;
 
     time_t time_slice;
 
@@ -41,37 +41,37 @@ extern "C" {
 extern void ksched_put(thread *t);
 extern void ksched_switch();
 
-thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *usr_stack);
+thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *user_stack);
 
 static inline thread *kthread_create_user(void (*body)(void *), void *arg) {
-    void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    if (!usr_stack) return 0;
-    return kthread_create_user_on_stack(body, arg, usr_stack);
+    void *user_stack = kmem_alloc(DEFAULT_STACK_SIZE);
+    if (!user_stack) return 0;
+    return kthread_create_user_on_stack(body, arg, user_stack);
 }
 
 thread *kthread_create_kernel(void (*body)(void *), void *arg, uint8 priority);
 
 static inline void kthread_dispatch() {
-    running_thread->state = THREAD_READY;
+    running_thread->status = THREAD_READY;
     ksched_switch();
 }
 
 static inline void kthread_block() {
-    running_thread->state = THREAD_BLOCKED;
+    running_thread->status = THREAD_BLOCKED;
     ksched_switch();
 }
 
 static inline void kthread_unblock(thread *t) {
-    if (t->state != THREAD_BLOCKED) return;
-    t->state = THREAD_READY;
+    if (t->status != THREAD_BLOCKED) return;
+    t->status = THREAD_READY;
     ksched_put(t);
 }
 
 static inline int kthread_exit() {
     if (running_thread->joiner) kthread_unblock(running_thread->joiner);
-    running_thread->state = THREAD_EXITED;
+    running_thread->status = THREAD_EXITED;
     ksched_switch();
-    return -ESRCH;
+    return -ESRCH; // should never be reached
 }
 
 static inline void kthread_join(thread *t) {

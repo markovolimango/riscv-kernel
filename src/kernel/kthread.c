@@ -20,60 +20,62 @@ static void user_body_wrapper(void (*body)(void *), void *arg) {
 static void user_entry_wrapper() {
     void (*body)(void *) = running_thread->body;
     void *arg = running_thread->arg;
-    asm volatile("csrw sscratch, %0" : : "r"(running_thread->context.ksp + 8 * 14));
-    asm volatile("mv sp, %0" : : "r"((uint64)running_thread->usr_stack + DEFAULT_STACK_SIZE));
+    asm volatile("csrw sscratch, %0" : : "r"(running_thread->context.sp + 8 * 14));
+    asm volatile("mv sp, %0" : : "r"((uint64)running_thread->user_stack + DEFAULT_STACK_SIZE));
     sepc_write((uint64)user_body_wrapper);
     sstatus_clear_spp();
     sstatus_set_spie();
     asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
 }
 
-static thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack,
-                                       uint8 is_kernel, uint8 priority) {
-    thread *t = kmem_alloc(sizeof(thread));
-    if (!t) {
-        kmem_free(usr_stack);
-        return 0;
-    }
-
-    t->usr_stack = usr_stack;
-    t->kernel_stack = kmem_alloc(DEFAULT_KERNEL_STACK_SIZE);
-    if (!t->kernel_stack) {
-        kmem_free(usr_stack);
-        kmem_free(t);
-        return 0;
-    }
-    t->context.ksp = (uint64)t->kernel_stack + DEFAULT_KERNEL_STACK_SIZE -
-                     8 * 14; // because it tries to pop registers when restoring context
-    t->context.ra = is_kernel ? (uint64)kernel_entry_wrapper : (uint64)user_entry_wrapper;
-
-    uint64 *ksp = (uint64 *)t->context.ksp;
-    for (int i = 0; i < 13; i++) // zero out the stack, may be unnecessary
-        ksp[i] = 0;
-
+static inline void init_thread(thread *t, void (*body)(void *), void *arg) {
     t->body = body;
     t->arg = arg;
-
-    t->state = THREAD_BLOCKED;
-
+    t->status = THREAD_BLOCKED;
     t->time_slice = DEFAULT_TIME_SLICE;
-
-    t->priority = priority;
     t->boost = 0;
-
     t->joiner = 0;
-
     t->next = 0;
+}
 
+static inline void zero_stack(thread *t) {
+    uint64 *ksp = (uint64 *)t->context.sp;
+    for (int i = 0; i < 13; i++) ksp[i] = 0;
+}
+
+#define ERROR_THREAD_CREATE(t)                                                                     \
+    do {                                                                                           \
+        if (!(t)) return 0;                                                                        \
+        if ((t)->user_stack) kmem_free((t)->user_stack);                                           \
+        if ((t)->kernel_stack) kmem_free((t)->kernel_stack);                                       \
+        kmem_free(t);                                                                              \
+        return 0;                                                                                  \
+    } while (0)
+
+thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *user_stack) {
+    thread *t = kmem_alloc(sizeof(thread));
+    if (!t) ERROR_THREAD_CREATE(t);
+    t->kernel_stack = kmem_alloc(DEFAULT_KERNEL_STACK_SIZE);
+    if (!t->kernel_stack) ERROR_THREAD_CREATE(t);
+    t->user_stack = user_stack;
+    init_thread(t, body, arg);
+    t->priority = 8;
+    t->context.sp = (uint64)t->kernel_stack + DEFAULT_KERNEL_STACK_SIZE - 8 * 14;
+    t->context.ra = (uint64)user_entry_wrapper;
+    zero_stack(t);
     return t;
 }
 
-thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *usr_stack) {
-    return kthread_create_on_stack(body, arg, usr_stack, 0, 8);
-}
-
 thread *kthread_create_kernel(void (*body)(void *), void *arg, uint8 priority) {
-    void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
-    if (!usr_stack) return 0;
-    return kthread_create_on_stack(body, arg, usr_stack, 1, priority);
+    thread *t = kmem_alloc(sizeof(thread));
+    if (!t) ERROR_THREAD_CREATE(t);
+    t->kernel_stack = kmem_alloc(DEFAULT_KERNEL_STACK_SIZE);
+    if (!t->kernel_stack) ERROR_THREAD_CREATE(t);
+    t->user_stack = 0;
+    init_thread(t, body, arg);
+    t->priority = priority;
+    t->context.sp = (uint64)t->kernel_stack + DEFAULT_KERNEL_STACK_SIZE - 8 * 14;
+    t->context.ra = (uint64)kernel_entry_wrapper;
+    zero_stack(t);
+    return t;
 }

@@ -7,8 +7,7 @@
 #    uint64 ra;
 # }
 
-# void context_switch(thread_context *prev, thread_context *next)
-context_switch:
+context_switch:         # void context_switch(thread_context *prev, thread_context *next)
     addi sp, sp, -8*14
     .irp index, 0,1,2,3,4,5,6,7,8,9,10,11
     sd s\index, \index*8(sp)
@@ -21,10 +20,9 @@ context_switch:
     ld sp, 0(a1)        # sp = next->sp
     ld ra, 8(a1)        # ra = next->ra
 
-    # restore the new context registers
     .irp index, 0,1,2,3,4,5,6,7,8,9,10,11
     ld s\index, \index*8(sp)
     .endr
     ld tp, 8*12(sp)
-    addi sp, sp, 8*14
+    addi sp, sp, 8*14   # restore all calle-saved registers
     ret
