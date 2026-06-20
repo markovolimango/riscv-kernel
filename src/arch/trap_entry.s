@@ -1,5 +1,4 @@
 .align 4
-
 .section .text
 .global trap_entry
 

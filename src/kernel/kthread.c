@@ -5,6 +5,8 @@
 #include "../../h/kernel/ksched.h"
 #include "../../h/utils/errno.h"
 
+extern void user_entry_jump(void (*body)(void *), void *arg, uint64 usp);
+
 static const size_t DEFAULT_KERNEL_STACK_SIZE = 1024;
 
 static void kernel_entry_wrapper() {
@@ -18,14 +20,9 @@ static void user_body_wrapper(void (*body)(void *), void *arg) {
 }
 
 static void user_entry_wrapper() {
-    void (*body)(void *) = running_thread->body;
-    void *arg = running_thread->arg;
-    asm volatile("csrw sscratch, %0" : : "r"(running_thread->context.sp + 8 * 14));
-    asm volatile("mv sp, %0" : : "r"((uint64)running_thread->user_stack + DEFAULT_STACK_SIZE));
     sepc_write((uint64)user_body_wrapper);
-    sstatus_clear_spp();
-    sstatus_set_spie();
-    asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
+    user_entry_jump(running_thread->body, running_thread->arg,
+                    (uint64)running_thread->user_stack + DEFAULT_STACK_SIZE);
 }
 
 static inline void init_thread(thread *t, void (*body)(void *), void *arg) {
