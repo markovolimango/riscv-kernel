@@ -55,7 +55,8 @@ static void tx_thread_body(void *arg) {
 void kio_init() {
     io_buf_init(&tx_buf);
     io_buf_init(&rx_buf);
-    tx_thread = kthread_create(tx_thread_body, 0, 1, 12);
+    tx_thread = kthread_create_kernel(tx_thread_body, 0, 12);
+    tx_thread->time_slice *= 10;
 }
 
 void kio_putc(char c) {

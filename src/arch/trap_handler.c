@@ -23,8 +23,8 @@ static void handle_syscall(volatile trap_frame *tf) {
         break;
     case SYSCALL_THREAD_CREATE: // (thread **handle, void (*start_routine)(void *), void *arg,
                                 // void* stack_space)
-        *((thread **)tf->x[11]) = kthread_create_on_stack(
-            (void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14], 0, 8);
+        *((thread **)tf->x[11]) = kthread_create_user_on_stack(
+            (void (*)(void *))tf->x[12], (void *)tf->x[13], (void *)tf->x[14]);
         if (!*((thread **)tf->x[11])) ret = -ENOMEM;
         else ksched_put(*((thread **)tf->x[11]));
         break;

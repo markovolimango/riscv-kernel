@@ -33,9 +33,9 @@ void main() {
     ksched_init();
     kio_init();
 
-    thread *userThread = kthread_create(userMainWrapper, 0, 0, 8);
+    thread *userThread = kthread_create_user(userMainWrapper, 0);
     for (uint8 i = 0; i < 10; i++) {
-        thread *workerThread = kthread_create(workerBody, 0, 0, 8);
+        thread *workerThread = kthread_create_user(workerBody, 0);
         ksched_put(workerThread);
     }
     ksched_put(userThread);

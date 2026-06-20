@@ -14,15 +14,17 @@ struct thread_context {
 
 typedef struct thread {
     struct thread_context context;
-
     void *usr_stack;
 
     void (*body)(void *);
     void *arg;
 
-    uint8 priority; // 0-15, 15 = highest
     enum thread_state state;
+
     time_t time_slice;
+
+    uint8 priority; // 0-15, 15 = highest
+    uint8 boost;
 
     struct thread *joiner;
 
@@ -38,15 +40,15 @@ extern "C" {
 extern void ksched_put(thread *t);
 extern void ksched_switch();
 
-thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel,
-                                uint8 priority);
+thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *usr_stack);
 
-static inline thread *kthread_create(void (*body)(void *), void *arg, uint8 is_kernel,
-                                     uint8 priority) {
+static inline thread *kthread_create_user(void (*body)(void *), void *arg) {
     void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
     if (!usr_stack) return 0;
-    return kthread_create_on_stack(body, arg, usr_stack, is_kernel, priority);
+    return kthread_create_user_on_stack(body, arg, usr_stack);
 }
+
+thread *kthread_create_kernel(void (*body)(void *), void *arg, uint8 priority);
 
 static inline void kthread_dispatch() {
     running_thread->state = THREAD_READY;

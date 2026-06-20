@@ -24,8 +24,8 @@ static void user_entry_wrapper() {
     asm volatile("mv a0, %0\n mv a1, %1\n sret" : : "r"(body), "r"(arg));
 }
 
-thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack, uint8 is_kernel,
-                                uint8 priority) {
+static thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack,
+                                       uint8 is_kernel, uint8 priority) {
     thread *t = kmem_alloc(sizeof(thread));
     if (!t) {
         kmem_free(usr_stack);
@@ -37,21 +37,33 @@ thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *usr_stack
                     8 * 14; // because it tries to pop registers when restoring context
     t->context.ra = is_kernel ? (uint64)kernel_entry_wrapper : (uint64)user_entry_wrapper;
 
-    uint64 *stack = (uint64 *)t->context.sp;
+    uint64 *sp = (uint64 *)t->context.sp;
     for (int i = 0; i < 13; i++) // zero out the stack, may be unnecessary
-        stack[i] = 0;
+        sp[i] = 0;
 
     t->body = body;
     t->arg = arg;
 
     t->state = THREAD_BLOCKED;
 
-    t->priority = priority;
     t->time_slice = DEFAULT_TIME_SLICE;
+
+    t->priority = priority;
+    t->boost = 0;
 
     t->joiner = 0;
 
     t->next = 0;
 
     return t;
+}
+
+thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *usr_stack) {
+    return kthread_create_on_stack(body, arg, usr_stack, 0, 8);
+}
+
+thread *kthread_create_kernel(void (*body)(void *), void *arg, uint8 priority) {
+    void *usr_stack = kmem_alloc(DEFAULT_STACK_SIZE);
+    if (!usr_stack) return 0;
+    return kthread_create_on_stack(body, arg, usr_stack, 1, priority);
 }
