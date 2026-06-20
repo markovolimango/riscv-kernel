@@ -20,6 +20,8 @@ static void user_body_wrapper(void (*body)(void *), void *arg) {
 static void user_entry_wrapper() {
     void (*body)(void *) = running_thread->body;
     void *arg = running_thread->arg;
+    asm volatile("csrw sscratch, %0" : : "r"(running_thread->context.ksp + 8 * 14));
+    asm volatile("mv sp, %0" : : "r"((uint64)running_thread->usr_stack + DEFAULT_STACK_SIZE));
     sepc_write((uint64)user_body_wrapper);
     sstatus_clear_spp();
     sstatus_set_spie();
@@ -41,13 +43,11 @@ static thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *us
         kmem_free(t);
         return 0;
     }
-    uint64 sp = (uint64)usr_stack + DEFAULT_STACK_SIZE;
-    asm volatile("csrw sscratch, %0" : : "r"(sp));
-    t->context.sp = (uint64)t->kernel_stack + DEFAULT_KERNEL_STACK_SIZE -
-                    8 * 14; // because it tries to pop registers when restoring context
+    t->context.ksp = (uint64)t->kernel_stack + DEFAULT_KERNEL_STACK_SIZE -
+                     8 * 14; // because it tries to pop registers when restoring context
     t->context.ra = is_kernel ? (uint64)kernel_entry_wrapper : (uint64)user_entry_wrapper;
 
-    uint64 *ksp = (uint64 *)t->context.sp;
+    uint64 *ksp = (uint64 *)t->context.ksp;
     for (int i = 0; i < 13; i++) // zero out the stack, may be unnecessary
         ksp[i] = 0;
 
