@@ -15,6 +15,7 @@ struct thread_context {
 typedef struct thread {
     struct thread_context context;
     void *usr_stack;
+    void *kernel_stack;
 
     void (*body)(void *);
     void *arg;

@@ -5,6 +5,8 @@
 #include "../../h/kernel/ksched.h"
 #include "../../h/utils/errno.h"
 
+static const size_t DEFAULT_KERNEL_STACK_SIZE = 1024;
+
 static void kernel_entry_wrapper() {
     running_thread->body(running_thread->arg);
     kthread_exit();
@@ -33,13 +35,21 @@ static thread *kthread_create_on_stack(void (*body)(void *), void *arg, void *us
     }
 
     t->usr_stack = usr_stack;
-    t->context.sp = (uint64)usr_stack + DEFAULT_STACK_SIZE -
+    t->kernel_stack = kmem_alloc(DEFAULT_KERNEL_STACK_SIZE);
+    if (!t->kernel_stack) {
+        kmem_free(usr_stack);
+        kmem_free(t);
+        return 0;
+    }
+    uint64 sp = (uint64)usr_stack + DEFAULT_STACK_SIZE;
+    asm volatile("csrw sscratch, %0" : : "r"(sp));
+    t->context.sp = (uint64)t->kernel_stack + DEFAULT_KERNEL_STACK_SIZE -
                     8 * 14; // because it tries to pop registers when restoring context
     t->context.ra = is_kernel ? (uint64)kernel_entry_wrapper : (uint64)user_entry_wrapper;
 
-    uint64 *sp = (uint64 *)t->context.sp;
+    uint64 *ksp = (uint64 *)t->context.sp;
     for (int i = 0; i < 13; i++) // zero out the stack, may be unnecessary
-        sp[i] = 0;
+        ksp[i] = 0;
 
     t->body = body;
     t->arg = arg;
