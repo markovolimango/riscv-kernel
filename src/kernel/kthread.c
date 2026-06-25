@@ -76,3 +76,10 @@ thread *kthread_create_kernel(void (*body)(void *), void *arg, uint8 priority) {
     zero_stack(t);
     return t;
 }
+
+int kthread_exit() {
+    if (running_thread->joiner) kthread_unblock(running_thread->joiner);
+    running_thread->status = THREAD_EXITED;
+    ksched_switch();
+    return -ESRCH; // should never be reached
+}

@@ -5,6 +5,8 @@
 #include "../../h/utils/errno.h"
 #include "../../lib/hw.h"
 
+#define BOOST_MAX 3
+
 enum thread_status { THREAD_RUNNING, THREAD_READY, THREAD_EXITED, THREAD_BLOCKED, THREAD_EXPIRED };
 
 struct thread_context {
@@ -67,16 +69,16 @@ static inline void kthread_unblock(thread *t) {
     ksched_put(t);
 }
 
-static inline int kthread_exit() {
-    if (running_thread->joiner) kthread_unblock(running_thread->joiner);
-    running_thread->status = THREAD_EXITED;
-    ksched_switch();
-    return -ESRCH; // should never be reached
-}
+int kthread_exit();
 
 static inline void kthread_join(thread *t) {
     t->joiner = running_thread;
     kthread_block();
+}
+
+static inline void kthread_boost(thread *t) {
+    if (!t->user_stack) return;
+    if (t->boost < BOOST_MAX) t->boost++;
 }
 
 #ifdef __cplusplus

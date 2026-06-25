@@ -23,7 +23,9 @@ static inline thread *dequeue() {
         active = expired;
         expired = tmp;
     }
-    return pq_dequeue(active);
+    thread *t = pq_dequeue(active);
+    if (t) t->boost = 0;
+    return t;
 }
 
 void ksched_put(thread *t) {
@@ -43,7 +45,7 @@ void ksched_switch() {
     switch (prev->status) {
     case THREAD_RUNNING:
         next = pq_peek(active);
-        if (!next || next->priority <= prev->priority) return;
+        if (!next || next->priority + next->boost <= prev->priority + prev->boost) return;
         dequeue();
         prev->status = THREAD_READY;
         pq_enqueue(active, prev);
