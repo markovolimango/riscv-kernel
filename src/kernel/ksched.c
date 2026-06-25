@@ -105,5 +105,5 @@ static void idle_body(void *arg) {
 
 void ksched_init() {
     running_thread = kthread_create_kernel(0, 0, 0); // main
-    idle_thread = kthread_create_kernel(idle_body, 0, 1);
+    idle_thread = kthread_create_user(idle_body, 0);
 }

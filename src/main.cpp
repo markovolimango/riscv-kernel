@@ -8,23 +8,11 @@
 
 extern "C" void trap_entry();
 
-// extern void userMain();
-
-void mareMain() {
-    while (1) {
-        char c = kio_getc();
-        kio_putc(c);
-    }
-}
+extern void userMain();
 
 void userMainWrapper(void *arg) {
-    mareMain();
+    userMain();
     thread_exit();
-}
-
-void workerBody(void *arg) {
-    while (1) {
-    }
 }
 
 void main() {
@@ -34,10 +22,6 @@ void main() {
     kio_init();
 
     thread *userThread = kthread_create_user(userMainWrapper, 0);
-    for (uint8 i = 0; i < 10; i++) {
-        thread *workerThread = kthread_create_user(workerBody, 0);
-        ksched_put(workerThread);
-    }
     ksched_put(userThread);
     kthread_join(userThread);
 
