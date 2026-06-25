@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void shutdown(const char *msg);
+void shutdown();
 
 #ifdef __cplusplus
 }

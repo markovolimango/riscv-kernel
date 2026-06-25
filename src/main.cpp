@@ -17,12 +17,12 @@ void main() {
     kmem_init();
     ksched_init();
     kio_init();
+    kio_puts("KERNEL: Initialized successfully.\n");
 
     thread *userThread = kthread_create_user(userMainWrapper, 0);
     ksched_put(userThread);
     kthread_join(userThread);
 
-    putc('\n');
-
-    shutdown("Execution complete");
+    kio_puts("KERNEL: Execution complete.\n");
+    shutdown();
 }

@@ -9,7 +9,6 @@
 #include "../../h/kernel/kthread.h"
 #include "../../h/kernel/ktime.h"
 #include "../../h/utils/errno.h"
-#include "../../lib/console.h"
 #include "../../lib/hw.h"
 
 static void handle_syscall(volatile trap_frame *tf) {
@@ -81,7 +80,7 @@ static void handle_timer() {
 static void handle_external_irq() {
     uint64 irq = plic_claim();
     if (irq == CONSOLE_IRQ) kio_handle_console_irq();
-    // else neki error? warning?
+    else kio_puts("KERNEL: Unknown external IRQ\n");
     plic_complete(irq);
     ksched_switch();
 }
@@ -98,23 +97,32 @@ void trap_handler(volatile trap_frame *tf) {
             handle_external_irq();
             break;
         default:
+            kio_puts("KERNEL: Unknown interrupt\n");
             break;
         }
     } else {
         switch (scause) {
         case SCAUSE_ECALL_U:
+            handle_syscall(tf);
+            break;
         case SCAUSE_ECALL_S:
-            handle_syscall(tf); // advances sepc by 4 internally
+            kio_puts("KERNEL: Ecall from supervisor mode (not allowed)\n");
             break;
         case SCAUSE_ILLEGAL_INSTR:
+            kio_puts("KERNEL: Illegal instruction\n");
             kthread_exit();
             break;
         case SCAUSE_LOAD_FAULT:
+            kio_puts("KERNEL: Load fault\n");
+            kthread_exit();
+            break;
         case SCAUSE_STORE_FAULT:
+            kio_puts("KERNEL: Store fault\n");
             kthread_exit();
             break;
         default:
-            shutdown("unknown trap");
+            kio_puts("KERNEL: Unknown trap\n");
+            kthread_exit();
             break;
         }
     }

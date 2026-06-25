@@ -21,7 +21,7 @@ static void io_buf_init(io_buf *buf) {
     buf->head = buf->tail = 0;
     buf->space = ksem_create(IO_BUF_SIZE);
     buf->data = ksem_create(0);
-    if (!buf->space || !buf->data) shutdown(""); // no msg cause kio_init failed lol
+    if (!buf->space || !buf->data) shutdown();
 }
 
 static void io_buf_put(io_buf *buf, char c) {
@@ -67,6 +67,10 @@ void kio_putc(char c) {
     io_buf_put(&tx_buf, c);
     ksem_signal(tx_buf.data);
     ksched_switch();
+}
+
+void kio_puts(const char *s) {
+    while (*s) kio_putc(*s++);
 }
 
 char kio_getc() {
