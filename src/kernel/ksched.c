@@ -103,11 +103,16 @@ static void idle_body(void *arg) {
 }
 
 void ksched_init() {
-    running_thread = kthread_create_kernel(0, 0, 0); // main
+    running_thread = kmem_alloc(sizeof(thread));
     if (!running_thread) shutdown();
+
+    init_thread(running_thread, 0, 0);
+    running_thread->status = THREAD_RUNNING;
+    running_thread->priority = 1;
+
     void *idle_stack = kmem_alloc(IDLE_STACK_SIZE);
     if (!idle_stack) shutdown();
     idle_thread = kthread_create_user_on_stack(idle_body, 0, idle_stack);
     if (!idle_thread) shutdown();
-    idle_thread->priority = 1;
+    idle_thread->priority = 0;
 }

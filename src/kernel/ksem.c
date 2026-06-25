@@ -51,6 +51,7 @@ int ksem_signal_n(sem *s, unsigned n) {
         if (s->val >= s->head->n) {
             sem_node *node = dequeue(s);
             s->val -= node->n;
+            kthread_boost(node->t);
             kthread_unblock(node->t);
         } else break;
     }

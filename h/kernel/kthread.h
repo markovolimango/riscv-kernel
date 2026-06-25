@@ -43,6 +43,8 @@ extern "C" {
 extern void ksched_put(thread *t);
 extern void ksched_switch();
 
+void init_thread(thread *t, void (*body)(void *), void *arg);
+
 thread *kthread_create_user_on_stack(void (*body)(void *), void *arg, void *user_stack);
 
 static inline thread *kthread_create_user(void (*body)(void *), void *arg) {

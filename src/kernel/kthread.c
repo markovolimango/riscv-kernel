@@ -25,7 +25,7 @@ static void user_entry_wrapper() {
                     (uint64)running_thread->user_stack + DEFAULT_STACK_SIZE);
 }
 
-static inline void init_thread(thread *t, void (*body)(void *), void *arg) {
+void init_thread(thread *t, void (*body)(void *), void *arg) {
     t->body = body;
     t->arg = arg;
     t->status = THREAD_BLOCKED;

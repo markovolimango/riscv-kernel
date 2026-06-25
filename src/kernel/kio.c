@@ -38,7 +38,7 @@ static char io_buf_take(io_buf *buf) {
 static io_buf tx_buf;
 static io_buf rx_buf;
 static thread *tx_thread;
-static uint8 tx_hw_blocked = 1;
+static uint8 tx_hw_blocked = 0;
 
 static void tx_thread_body(void *arg) {
     while (1) {
