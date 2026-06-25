@@ -1,6 +1,5 @@
 #include "../../h/api/syscall_codes.h"
 #include "../../h/arch/regs.h"
-#include "../../h/arch/shutdown.h"
 #include "../../h/arch/trap_frame.h"
 #include "../../h/kernel/kio.h"
 #include "../../h/kernel/kmem.h"
@@ -80,7 +79,7 @@ static void handle_timer() {
 static void handle_external_irq() {
     uint64 irq = plic_claim();
     if (irq == CONSOLE_IRQ) kio_handle_console_irq();
-    else kio_puts("KERNEL: Unknown external IRQ\n");
+    else kio_puts("KERNEL: Unknown external interrupt request\n");
     plic_complete(irq);
     ksched_switch();
 }
@@ -106,7 +105,7 @@ void trap_handler(volatile trap_frame *tf) {
             handle_syscall(tf);
             break;
         case SCAUSE_ECALL_S:
-            kio_puts("KERNEL: Ecall from supervisor mode (not allowed)\n");
+            kio_puts("KERNEL: Environment call from supervisor mode (not allowed)\n");
             break;
         case SCAUSE_ILLEGAL_INSTR:
             kio_puts("KERNEL: Illegal instruction\n");

@@ -1,5 +1,5 @@
 #include "../../h/kernel/ksched.h"
-#include "../../h/kernel/kio.h"
+#include "../../h/arch/shutdown.h"
 #include "../../h/kernel/kmem.h"
 #include "../../h/utils/thread_pq.h"
 
@@ -8,6 +8,8 @@ extern "C" void context_switch(thread_context *prev, thread_context *next);
 #else
 extern void context_switch(struct thread_context *prev, struct thread_context *next);
 #endif
+
+#define IDLE_STACK_SIZE 128
 
 thread *running_thread = 0;
 static thread *idle_thread;
@@ -100,6 +102,10 @@ static void idle_body(void *arg) {
 
 void ksched_init() {
     running_thread = kthread_create_kernel(0, 0, 0); // main
-    idle_thread = kthread_create_user(idle_body, 0);
+    if (!running_thread) shutdown();
+    void *idle_stack = kmem_alloc(IDLE_STACK_SIZE);
+    if (!idle_stack) shutdown();
+    idle_thread = kthread_create_user_on_stack(idle_body, 0, idle_stack);
+    if (!idle_thread) shutdown();
     idle_thread->priority = 1;
 }
