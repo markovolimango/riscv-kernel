@@ -45,7 +45,7 @@ void ksched_switch() {
     switch (prev->status) {
     case THREAD_RUNNING:
         next = pq_peek(active);
-        if (!next || next->priority + next->boost <= prev->priority + prev->boost) return;
+        if (!next || next->queued_priority <= prev->priority + prev->boost) return;
         dequeue();
         prev->status = THREAD_READY;
         pq_enqueue(active, prev);

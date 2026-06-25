@@ -2,6 +2,7 @@
 
 void pq_enqueue(thread_pq *q, thread *t) {
     int p = t->priority + t->boost;
+    t->queued_priority = p;
     t->next = 0;
     if (q->tails[p] == 0) q->heads[p] = t;
     else q->tails[p]->next = t;
@@ -18,7 +19,7 @@ thread *pq_peek(thread_pq *q) {
 
 void pq_dequeue_thread(thread_pq *q, thread *t) {
     if (t == 0) return;
-    int p = t->priority + t->boost;
+    int p = t->queued_priority;
     q->heads[p] = q->heads[p]->next;
     if (q->heads[p] == 0) {
         q->tails[p] = 0;

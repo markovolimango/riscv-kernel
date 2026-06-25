@@ -28,6 +28,7 @@ typedef struct thread {
 
     uint8 priority; // 0-15, 15 = highest
     uint8 boost;
+    uint8 queued_priority;
 
     struct thread *joiner;
 
