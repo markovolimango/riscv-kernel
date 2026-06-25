@@ -95,15 +95,11 @@ void ksched_switch() {
 }
 
 static void idle_body(void *arg) {
-    // sstatus_set_sie();
-    while (1) {
-        asm volatile("wfi");
-        // running_thread->state = THREAD_READY;
-        // ksched_switch();
-    }
+    while (1) asm volatile("wfi");
 }
 
 void ksched_init() {
     running_thread = kthread_create_kernel(0, 0, 0); // main
     idle_thread = kthread_create_user(idle_body, 0);
+    idle_thread->priority = 1;
 }

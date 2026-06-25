@@ -10,10 +10,7 @@ extern "C" void trap_entry();
 
 extern void userMain();
 
-void userMainWrapper(void *arg) {
-    userMain();
-    thread_exit();
-}
+void userMainWrapper(void *arg) { userMain(); }
 
 void main() {
     stvec_write((uint64)trap_entry);

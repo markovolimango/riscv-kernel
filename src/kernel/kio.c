@@ -38,13 +38,13 @@ static char io_buf_take(io_buf *buf) {
 static io_buf tx_buf;
 static io_buf rx_buf;
 static thread *tx_thread;
-static uint8 tx_irq_pending = 0;
+static uint8 tx_hw_blocked = 1;
 
 static void tx_thread_body(void *arg) {
     while (1) {
         ksem_wait(tx_buf.data);
         if (!tx_ready()) {
-            tx_irq_pending = 0;
+            tx_hw_blocked = 1;
             kthread_block();
         }
         *(uint8 *)CONSOLE_TX_DATA = io_buf_take(&tx_buf);
@@ -56,10 +56,13 @@ void kio_init() {
     io_buf_init(&tx_buf);
     io_buf_init(&rx_buf);
     tx_thread = kthread_create_kernel(tx_thread_body, 0, 12);
-    tx_thread->time_slice *= 10;
 }
 
 void kio_putc(char c) {
+    if (tx_ready() && tx_buf.head == tx_buf.tail) {
+        *(uint8 *)CONSOLE_TX_DATA = c;
+        return;
+    }
     ksem_wait(tx_buf.space);
     io_buf_put(&tx_buf, c);
     ksem_signal(tx_buf.data);
@@ -72,7 +75,7 @@ char kio_getc() {
 }
 
 static inline void handle_tx_irq() {
-    tx_irq_pending = 1;
+    tx_hw_blocked = 0;
     kthread_unblock(tx_thread);
 }
 
@@ -87,7 +90,6 @@ static inline void handle_rx_irq() {
 }
 
 void kio_handle_console_irq() {
-    if (tx_ready() && !tx_irq_pending) handle_tx_irq();
-    else if (rx_ready()) handle_rx_irq();
-    // else wtf??
+    if (tx_ready() && tx_hw_blocked) handle_tx_irq();
+    if (rx_ready()) handle_rx_irq();
 }
