@@ -36,6 +36,7 @@ void ksched_put(thread *t) {
 static inline void free_zombie() {
     if (zombie == 0) return;
     if (zombie->user_stack) kmem_free(zombie->user_stack);
+    if (zombie->kernel_stack) kmem_free(zombie->kernel_stack);
     kmem_free(zombie);
     zombie = 0;
 }
@@ -92,6 +93,7 @@ void ksched_switch() {
         if (!next) next = idle_thread;
         next->status = THREAD_RUNNING;
         running_thread = next;
+        zombie = prev;
         context_switch(&prev->context, &next->context);
         // this should never be reached
         break;
